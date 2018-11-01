@@ -529,6 +529,7 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set sel [atomselect $cmpdMolID all]
     set cmpdNumAtoms [molinfo $cmpdMolID get numatoms]
     set cmpdPropList [$sel get $propList]
+    set xyzOpt [$sel get {x y z}]
     $sel delete
     set bondList [topo getbondlist -molid $cmpdMolID]
     set angList [topo getanglelist -molid $cmpdMolID]
@@ -665,7 +666,8 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
 
     # parse dipole data
     set dipoleData [::ForceFieldToolKit::ChargeOpt::getDipoleData $baseMP2Log]
-    set dipoleQMcoords [lindex $dipoleData 0]
+    #set dipoleQMcoords [lindex $dipoleData 0]
+    set dipoleQMcoords $xyzOpt 
     set dipoleQMvec [lindex $dipoleData 1]
     set dipoleQMmag [lindex $dipoleData 2]
     unset dipoleData
@@ -1034,12 +1036,16 @@ proc ::ForceFieldToolKit::ChargeOpt::computeIntE { currTraj currFrame } {
             ($qA * $qO) / ($dielectric * $dOH)  \
         )}]
 
+        
         # calculate Elj
+        if { $epsA < 0 } {
         set Elj [expr { \
             sqrt($epsA * $epsH) * (  pow(($rminA+$rminH)/$dH1,12) - 2.0*pow(($rminA+$rminH)/$dH1,6)  ) +\
             sqrt($epsA * $epsH) * (  pow(($rminA+$rminH)/$dH2,12) - 2.0*pow(($rminA+$rminH)/$dH2,6)  ) +\
             sqrt($epsA * $epsO) * (  pow(($rminA+$rminO)/$dOH,12) - 2.0*pow(($rminA+$rminO)/$dOH,6)  )  \
         }]
+    } else {
+        set Elj 0 }
         
 
         # update the running totals
