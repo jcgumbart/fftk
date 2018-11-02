@@ -529,11 +529,40 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set sel [atomselect $cmpdMolID all]
     set cmpdNumAtoms [molinfo $cmpdMolID get numatoms]
     set cmpdPropList [$sel get $propList]
-    $sel delete
     set bondList [topo getbondlist -molid $cmpdMolID]
     set angList [topo getanglelist -molid $cmpdMolID]
     set dihList [topo getdihedrallist -molid $cmpdMolID]
     set imprpList [topo getimproperlist -molid $cmpdMolID]
+
+    # get LP hosts and measure dist from 1st host
+    # TODO: The safest way should be read from psf, but here we just assume:
+    # TODO:   1) LP is massless and linked to one and only one atom
+    # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
+    set lp [atomselect $cmpdMolID "mass <= 0 and resname $resName"]
+    set lp_index [$lp list]
+    set lp_host1 [$lp getbonds]
+    set lp_host2 {}
+    set lp_dist {}
+    foreach i $lp_index h1 $lp_host1 {
+        set as_h1 [atomselect $cmpdMolID "index $h1"]
+        set bonds [$as_h1 getbonds]
+        set idx [lsearch {*}$bonds $i]
+        lappend lp_host2 [lreplace {*}$bonds $idx $idx]
+        $as_h1 delete
+
+        lappend lp_dist [measure bond [list $i $h1]]
+    }
+    unset bonds
+    unset idx
+
+    # DEBUG
+    # puts $lp_index 
+    # puts $lp_host1 
+    # puts $lp_host2 
+    # puts $lp_dist 
+    # return 
+
+    $sel delete
 
     # build wat info
     set watPropList {
@@ -594,12 +623,6 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     # reTypeFromPSF / reChargeFromPSF have been depreciated
     # ::ForceFieldToolKit::SharedFcns::reTypeFromPSF base-wat.psf $refmolid
     # ::ForceFieldToolKit::SharedFcns::reChargeFromPSF base-wat.psf $refmolid
-
-    # TODO get LP hosts and measure dist from 1st host
-    # TODO: The safest way should be read from psf, but here we just assume:
-    # TODO:   1) LP is massless and linked to one and only one atom
-    # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
-
 
     #
     # PARSE QM QUANTITIES
