@@ -595,6 +595,12 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     # ::ForceFieldToolKit::SharedFcns::reTypeFromPSF base-wat.psf $refmolid
     # ::ForceFieldToolKit::SharedFcns::reChargeFromPSF base-wat.psf $refmolid
 
+    # TODO get LP hosts and measure dist from 1st host
+    # TODO: The safest way should be read from psf, but here we just assume:
+    # TODO:   1) LP is massless and linked to one and only one atom
+    # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
+
+
     #
     # PARSE QM QUANTITIES
     #
@@ -622,11 +628,17 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
        # Parse Compound coordinates and move VMD atoms into position    
        set sel [atomselect $refmolid "resname $resName"]
        set molCoords [::ForceFieldToolKit::ChargeOpt::getMolCoords $log [$sel num]]
+       set c 0
        for {set i 0} {$i < [$sel num]} {incr i} {
           set temp [atomselect $refmolid "index $i"]
-          $temp set x [lindex [lindex $molCoords $i] 0]
-          $temp set y [lindex [lindex $molCoords $i] 1]
-          $temp set z [lindex [lindex $molCoords $i] 2]
+          if { [$temp get mass] > 0 } {
+              $temp set x [lindex [lindex $molCoords $c] 0]
+              $temp set y [lindex [lindex $molCoords $c] 1]
+              $temp set z [lindex [lindex $molCoords $c] 2]
+              incr c
+          } else {
+              # TODO due with LP
+          }
           $temp delete
        }
        $sel delete
@@ -669,6 +681,8 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set dipoleQMvec [lindex $dipoleData 1]
     set dipoleQMmag [lindex $dipoleData 2]
     unset dipoleData
+
+    # TODO handle LP on dipoleQMcoords
 
     if { $debug } {
         puts $debugLog "QM Standard Orientation Coordinates:"
