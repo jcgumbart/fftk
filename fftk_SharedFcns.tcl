@@ -137,7 +137,8 @@ proc ::ForceFieldToolKit::SharedFcns::readParFile { parFile } {
             {^IMPROPER.*} { set readstate IMPROP }
             {^CMAP.*} { set readstate CMAP }
             {^NONBONDED.*} { set readstate VDW }
-            {^HBOND.*} { continue }
+            {^NBFIX.*} { set readstate 0 }
+            {^HBOND.*} { set readstate 0 }
             {^END.*} { break }
             default {
                 set prmData [lindex [split $inLine \!] 0]
