@@ -1035,11 +1035,15 @@ proc ::ForceFieldToolKit::ChargeOpt::computeIntE { currTraj currFrame } {
         )}]
 
         # calculate Elj
-        set Elj [expr { \
-            sqrt($epsA * $epsH) * (  pow(($rminA+$rminH)/$dH1,12) - 2.0*pow(($rminA+$rminH)/$dH1,6)  ) +\
-            sqrt($epsA * $epsH) * (  pow(($rminA+$rminH)/$dH2,12) - 2.0*pow(($rminA+$rminH)/$dH2,6)  ) +\
-            sqrt($epsA * $epsO) * (  pow(($rminA+$rminO)/$dOH,12) - 2.0*pow(($rminA+$rminO)/$dOH,6)  )  \
-        }]
+        if { $epsA < 0 } {
+            set Elj [expr { \
+                sqrt($epsA * $epsH) * (  pow(($rminA+$rminH)/$dH1,12) - 2.0*pow(($rminA+$rminH)/$dH1,6)  ) +\
+                sqrt($epsA * $epsH) * (  pow(($rminA+$rminH)/$dH2,12) - 2.0*pow(($rminA+$rminH)/$dH2,6)  ) +\
+                sqrt($epsA * $epsO) * (  pow(($rminA+$rminO)/$dOH,12) - 2.0*pow(($rminA+$rminO)/$dOH,6)  )  \
+            }]
+        } else {
+            set Elj 0
+        }
         
 
         # update the running totals
