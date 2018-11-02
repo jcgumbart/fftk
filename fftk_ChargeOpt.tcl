@@ -554,6 +554,8 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     }
     unset bonds
     unset idx
+    $sel delete
+    $lp delete
 
     # DEBUG
     # puts $lp_index 
@@ -561,8 +563,6 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     # puts $lp_host2 
     # puts $lp_dist 
     # return 
-
-    $sel delete
 
     # build wat info
     set watPropList {
@@ -654,17 +654,35 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
        set c 0
        for {set i 0} {$i < [$sel num]} {incr i} {
           set temp [atomselect $refmolid "index $i"]
+          # if not lone pair (massless)
           if { [$temp get mass] > 0 } {
               $temp set x [lindex [lindex $molCoords $c] 0]
               $temp set y [lindex [lindex $molCoords $c] 1]
               $temp set z [lindex [lindex $molCoords $c] 2]
               incr c
-          } else {
-              # TODO due with LP
           }
           $temp delete
        }
        $sel delete
+       
+       # set lone pair position
+       foreach i $lp_index h1 $lp_host1 h2 $lp_host2 d $lp_dist {
+          set lp [atomselect $refmolid "index $i"]
+          set as_h1 [atomselect $refmolid "index $h1"]
+          set as_h2 [atomselect $refmolid "index $h2"]
+          
+          set xyz_h1 [$as_h1 get {x y z}]
+          set xyz_h2 [$as_h2 get {x y z}]
+
+          set dir [vecnorm [vecsub {*}$xyz_h1 {*}$xyz_h2]]
+          set pos [vecadd {*}$xyz_h1 [vecscale $d $dir]]
+
+          $lp set {x y z} [list $pos]
+
+          $lp delete
+          $as_h1 delete
+          $as_h2 delete
+       }
 
        # Parse Water coordinates and move VMD atoms into position
        # Don't want to assume water atoms are always in the same order
