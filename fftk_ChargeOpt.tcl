@@ -723,7 +723,16 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set dipoleQMmag [lindex $dipoleData 2]
     unset dipoleData
 
-    # TODO handle LP on dipoleQMcoords
+    # generate lone pair position on dipoleQMcoords
+    foreach i $lp_index h1 $lp_host1 h2 $lp_host2 d $lp_dist {
+       set xyz_h1 [lindex $dipoleQMcoords $h1]
+       set xyz_h2 [lindex $dipoleQMcoords $h2]
+
+       set dir [vecnorm [vecsub $xyz_h1 $xyz_h2]]
+       set pos [vecadd $xyz_h1 [vecscale $d $dir]]
+
+       set dipoleQMcoords [linsert $dipoleQMcoords $i $pos]
+    }
 
     if { $debug } {
         puts $debugLog "QM Standard Orientation Coordinates:"
