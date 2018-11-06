@@ -713,3 +713,62 @@ proc ::ForceFieldToolKit::SharedFcns::ParView::addParObject {args} {
     }
 }
 #======================================================
+namespace eval ::ForceFieldToolKit::SharedFcns::LonePair {
+    variable index
+    variable host1
+    variable host2
+    variable dist
+}
+#======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID resName } {
+    # initialize the lp list and its hosts and its distance from host1
+
+    variable index
+    variable host1
+    variable host2
+    variable dist
+
+    # get LP hosts and measure dist from 1st host
+    # TODO: The safest way should be read from psf, but here we just assume:
+    # TODO:   1) LP is massless and linked to one and only one atom
+    # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
+    set lp [atomselect $molID "mass <= 0 and resname $resName"]
+    set index [$lp list]
+    set host1 [$lp getbonds]
+    set host2 {}
+    set dist {}
+    foreach i $index h1 $host1 {
+        set as_h1 [atomselect $molID "index $h1"]
+        set bonds [$as_h1 getbonds]
+        set idx [lsearch {*}$bonds $i]
+        lappend host2 [lreplace {*}$bonds $idx $idx]
+        $as_h1 delete
+
+        lappend dist [measure bond [list $i $h1]]
+    }
+    unset bonds
+    unset idx
+    $lp delete
+}
+#======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
+    # generate lone pair position on QMcoords
+
+    variable index
+    variable host1
+    variable host2
+    variable dist
+
+    foreach i $index h1 $host1 h2 $host2 d $dist {
+       set xyz_h1 [lindex $coords $h1]
+       set xyz_h2 [lindex $coords $h2]
+
+       set dir [vecnorm [vecsub $xyz_h1 $xyz_h2]]
+       set pos [vecadd $xyz_h1 [vecscale $d $dir]]
+
+       set coords [linsert $coords $i $pos]
+    }
+
+    return $coords
+}
+#======================================================

@@ -533,36 +533,9 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set angList [topo getanglelist -molid $cmpdMolID]
     set dihList [topo getdihedrallist -molid $cmpdMolID]
     set imprpList [topo getimproperlist -molid $cmpdMolID]
+    ::ForceFieldToolKit::SharedFcns::LonePair::init $cmpdMolID $resName
 
-    # get LP hosts and measure dist from 1st host
-    # TODO: The safest way should be read from psf, but here we just assume:
-    # TODO:   1) LP is massless and linked to one and only one atom
-    # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
-    set lp [atomselect $cmpdMolID "mass <= 0 and resname $resName"]
-    set lp_index [$lp list]
-    set lp_host1 [$lp getbonds]
-    set lp_host2 {}
-    set lp_dist {}
-    foreach i $lp_index h1 $lp_host1 {
-        set as_h1 [atomselect $cmpdMolID "index $h1"]
-        set bonds [$as_h1 getbonds]
-        set idx [lsearch {*}$bonds $i]
-        lappend lp_host2 [lreplace {*}$bonds $idx $idx]
-        $as_h1 delete
-
-        lappend lp_dist [measure bond [list $i $h1]]
-    }
-    unset bonds
-    unset idx
     $sel delete
-    $lp delete
-
-    # DEBUG
-    # puts $lp_index 
-    # puts $lp_host1 
-    # puts $lp_host2 
-    # puts $lp_dist 
-    # return 
 
     # build wat info
     set watPropList {
@@ -651,39 +624,17 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
        # Parse Compound coordinates and move VMD atoms into position    
        set sel [atomselect $refmolid "resname $resName"]
        set molCoords [::ForceFieldToolKit::ChargeOpt::getMolCoords $log [$sel num]]
-       set c 0
+       set molCoords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $molCoords]
+
        for {set i 0} {$i < [$sel num]} {incr i} {
           set temp [atomselect $refmolid "index $i"]
-          # if not lone pair (massless)
-          if { [$temp get mass] > 0 } {
-              $temp set x [lindex [lindex $molCoords $c] 0]
-              $temp set y [lindex [lindex $molCoords $c] 1]
-              $temp set z [lindex [lindex $molCoords $c] 2]
-              incr c
-          }
+          $temp set x [lindex [lindex $molCoords $i] 0]
+          $temp set y [lindex [lindex $molCoords $i] 1]
+          $temp set z [lindex [lindex $molCoords $i] 2]
           $temp delete
        }
        $sel delete
        
-       # set lone pair position
-       foreach i $lp_index h1 $lp_host1 h2 $lp_host2 d $lp_dist {
-          set lp [atomselect $refmolid "index $i"]
-          set as_h1 [atomselect $refmolid "index $h1"]
-          set as_h2 [atomselect $refmolid "index $h2"]
-          
-          set xyz_h1 [$as_h1 get {x y z}]
-          set xyz_h2 [$as_h2 get {x y z}]
-
-          set dir [vecnorm [vecsub {*}$xyz_h1 {*}$xyz_h2]]
-          set pos [vecadd {*}$xyz_h1 [vecscale $d $dir]]
-
-          $lp set {x y z} [list $pos]
-
-          $lp delete
-          $as_h1 delete
-          $as_h2 delete
-       }
-
        # Parse Water coordinates and move VMD atoms into position
        # Don't want to assume water atoms are always in the same order
        set watCoords [::ForceFieldToolKit::ChargeOpt::getWatCoords $log]
@@ -724,15 +675,7 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     unset dipoleData
 
     # generate lone pair position on dipoleQMcoords
-    foreach i $lp_index h1 $lp_host1 h2 $lp_host2 d $lp_dist {
-       set xyz_h1 [lindex $dipoleQMcoords $h1]
-       set xyz_h2 [lindex $dipoleQMcoords $h2]
-
-       set dir [vecnorm [vecsub $xyz_h1 $xyz_h2]]
-       set pos [vecadd $xyz_h1 [vecscale $d $dir]]
-
-       set dipoleQMcoords [linsert $dipoleQMcoords $i $pos]
-    }
+    set dipoleQMcoords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $dipoleQMcoords]
 
     if { $debug } {
         puts $debugLog "QM Standard Orientation Coordinates:"
