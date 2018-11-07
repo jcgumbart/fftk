@@ -772,3 +772,25 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
     return $coords
 }
 #======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP { psf pdb } {
+    # generate a psf wihtout lone pair
+    
+    set molID [mol new $psf]
+    set all [atomselect $molID all]
+    set nolp [atomselect $molID "mass > 0"]
+
+    if {[$all num] > [$nolp num]} {
+        mol addfile $pdb
+        $nolp writepsf "nolp.psf"
+
+        mol delete $molID
+        set molID [mol new "nolp.psf"]
+        file delete "nolp.psf"
+    }
+
+    $all delete
+    $nolp delete
+
+    return $molID
+}
+#======================================================

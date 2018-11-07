@@ -358,7 +358,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::optimize {} {
 
     # load the Gaussian Log files from the hessian calculation
     if { $debug } { puts -nonewline $debugLog "loading hessian log file..."; flush $debugLog }
-    set hessLogID [mol new $psf]
+    set hessLogID [::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP $psf $pdb]
     # reTypeFromPSF has been depreciated
     #::ForceFieldToolKit::SharedFcns::reTypeFromPSF $psf $hessLogID 
     ::QMtool::use_vmd_molecule $hessLogID
