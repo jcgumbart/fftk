@@ -752,11 +752,9 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID {resName ""} } {
 
         lappend dist [measure bond [list $i $h1]]
     }
-    unset bonds
-    unset idx
     $lp delete
 
-    return num
+    return $num
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
