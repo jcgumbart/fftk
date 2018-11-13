@@ -720,7 +720,7 @@ namespace eval ::ForceFieldToolKit::SharedFcns::LonePair {
     variable dist
 }
 #======================================================
-proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID resName } {
+proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID {resName ""} } {
     # initialize the lp list and its hosts and its distance from host1
 
     variable index
@@ -732,7 +732,13 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID resName } {
     # TODO: The safest way should be read from psf, but here we just assume:
     # TODO:   1) LP is massless and linked to one and only one atom
     # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
-    set lp [atomselect $molID "mass <= 0 and resname $resName"]
+    if {$resName eq ""} {
+        set lp [atomselect $molID "mass <= 0"]
+    } else {
+        set lp [atomselect $molID "mass <= 0 and resname $resName"]
+    }
+
+    set num   [$lp num]
     set index [$lp list]
     set host1 [$lp getbonds]
     set host2 {}
@@ -749,6 +755,8 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID resName } {
     unset bonds
     unset idx
     $lp delete
+
+    return num
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
