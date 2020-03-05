@@ -1,5 +1,5 @@
 #
-# $Id: fftk_guiInterface.tcl,v 1.46 2017/12/13 18:34:17 gumbart Exp $
+# $Id: fftk_guiInterface.tcl,v 1.48 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -7,6 +7,7 @@ namespace eval ::ForceFieldToolKit::gui {
 
     # General Variables
     variable w
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # BuildPar Variables
     variable bparIdMissingAnalyzeMolID
@@ -114,7 +115,8 @@ proc fftk {} {
 }
 
 proc ::ForceFieldToolKit::gui::fftk_gui {} {
-
+    # Call QM variable
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # STYLE SETUP
     # set variables for controlling element paddings (style)
@@ -177,15 +179,20 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     set ::ForceFieldToolKit::gui::parType { {{Parameter Files} {.par .prm .inp}} {{All Files} *} }
     set ::ForceFieldToolKit::gui::topType { {{Topology Files} {.top .rtf .inp}} {{All Files} *} }
     set ::ForceFieldToolKit::gui::gauType { {{Gaussian Input Files} {.gau .com}} {{All Files} *} }
-    set ::ForceFieldToolKit::gui::logType { {{Gaussian/ffTK Log Files} {.log}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::AllInpType { {{QM Input Files} {.gau .com .inp}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::ORCAinpType { {{ORCA Input Files} {.inp}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::logType { {{QM/ffTK Log Files} {.log .out}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::AllLogType { {{QM Output Files} {.log .out}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::ORCAoutType { {{ORCA Output Files} {.out}} {{All Files} *} }
     set ::ForceFieldToolKit::gui::allType { {{All Files} *} }
     set ::ForceFieldToolKit::gui::chkType { {{Gaussian Checkpoint Files} {.chk}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::AllChkType { {{QM Checkpoint/Output Files} {.chk .out}} {{All Files} *} }
+    set ::ForceFieldToolKit::gui::ESPChkType { {{QM Checkpoint/Output/PDB Files} {.chk .out .pdb}} {{All Files} *} }
     set ::ForceFieldToolKit::gui::molType { {{MOL Files} {.mol2 .pdb}} {{All Files} *} }
     set ::ForceFieldToolKit::gui::strType { {{STR Files} {.str}} {{All Files} *} }
 
     # Variables to Initialize
     variable w
-
     # initialize
     ::ForceFieldToolKit::gui::init
 
@@ -1181,7 +1188,32 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $bpar.update.sep1 -column 0 -row 4 -columnspan 3 -sticky we -padx 10 -padx $hsepPadX -pady $hsepPadY
     grid $bpar.update.buildUpdatedFile -column 0 -row 5 -columnspan 3 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
 
+    #---------------------------------------------------#
+    #  QM software selector                             #
+    #---------------------------------------------------#
+    #
+    # Generate a menu for the QM selector. The menu is the same for all the tabs.
+    # Set the qmSoft variable and apply default values everytime the QM selector is used.
+    menu $w.menuQMSelector -tearoff no
+    $w.menuQMSelector add command -label "Gaussian" -command { 
+       set ::ForceFieldToolKit::qmSoft "Gaussian"
 
+       ::ForceFieldToolKit::Gaussian::resetDefaultsGeomOpt
+       ::ForceFieldToolKit::Gaussian::resetDefaultsGenZMatrix
+       ::ForceFieldToolKit::Gaussian::resetDefaultsESP
+       ::ForceFieldToolKit::Gaussian::resetDefaultsGenBonded
+       ::ForceFieldToolKit::Gaussian::resetDefaultsGenDihScan
+    } 
+    $w.menuQMSelector add command -label "ORCA"     -command {
+       set ::ForceFieldToolKit::qmSoft "ORCA"
+
+       ::ForceFieldToolKit::ORCA::resetDefaultsGeomOpt
+       ::ForceFieldToolKit::ORCA::resetDefaultsGenZMatrix
+       ::ForceFieldToolKit::ORCA::resetDefaultsESP
+       ::ForceFieldToolKit::ORCA::resetDefaultsGenBonded
+       ::ForceFieldToolKit::ORCA::resetDefaultsGenDihScan
+    }
+    
     #---------------------------------------------------#
     #  GeomOpt tab                                      #
     #---------------------------------------------------#
@@ -1206,12 +1238,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::pdb $tempfile }
         }
-    ttk::label $gopt.io.comLbl -text "Output GAU File:" -anchor center
+    ttk::label $gopt.io.comLbl -text "Output QM File:" -anchor center
     ttk::entry $gopt.io.com -textvariable ::ForceFieldToolKit::GeomOpt::com
     ttk::button $gopt.io.comSaveAs -text "SaveAs" \
-        -command {
-            set tempfile [tk_getSaveFile -title "Save the Gaussian Input File As..." -filetypes $::ForceFieldToolKit::gui::gauType -defaultextension {.gau}]
-            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::com $tempfile }
+        -command { set tempfile [tk_getSaveFile -title "Save the QM Input File As..." -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension {.gau}]
+                if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::com $tempfile }
         }
 
     # grid the io elements
@@ -1225,10 +1256,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gopt.io.com -column 1 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $gopt.io.comSaveAs -column 2 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
 
-    # Gaussian Settings
+    # QM Settings
     # -----------------
     # build the gaussian settings elements
-    ttk::labelframe $gopt.gaussian -labelanchor nw -padding $labelFrameInternalPadding -text "Gaussian Settings"
+    ttk::labelframe $gopt.gaussian -labelanchor nw -padding $labelFrameInternalPadding -text "QM Settings" 
+
+    ttk::menubutton $gopt.gaussian.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
     ttk::label $gopt.gaussian.procLbl -text "Processors:" -anchor w
     ttk::entry $gopt.gaussian.proc -textvariable ::ForceFieldToolKit::GeomOpt::qmProc -width 2 -justify center
     ttk::label $gopt.gaussian.memLbl -text "Memory(GB):" -anchor w
@@ -1239,31 +1273,39 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry $gopt.gaussian.mult -textvariable ::ForceFieldToolKit::GeomOpt::qmMult -width 2 -justify center
     ttk::label $gopt.gaussian.routeLbl -text "Route:" -anchor center
     ttk::entry $gopt.gaussian.route -textvariable ::ForceFieldToolKit::GeomOpt::qmRoute
-    ttk::button $gopt.gaussian.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::GeomOpt::resetGaussianDefaults }
+    ttk::button $gopt.gaussian.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGeomOpt }
+
+
 
     # grid the gaussian settings elements
     grid $gopt.gaussian -column 0 -row 1 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
-    grid rowconfigure $gopt.gaussian {0 1} -uniform rt1
+    grid rowconfigure $gopt.gaussian {0 2} -uniform rt1
 
-    grid $gopt.gaussian.procLbl -column 0 -row 0 -sticky nswe
-    grid $gopt.gaussian.proc -column 1 -row 0 -sticky we
-    grid $gopt.gaussian.memLbl -column 2 -row 0 -sticky nswe
-    grid $gopt.gaussian.mem -column 3 -row 0 -sticky we
-    grid $gopt.gaussian.chargeLbl -column 4 -row 0 -sticky nswe
-    grid $gopt.gaussian.charge -column 5 -row 0 -sticky we
-    grid $gopt.gaussian.multLbl -column 6 -row 0 -sticky nswe
-    grid $gopt.gaussian.mult -column 7 -row 0 -sticky we
-    grid $gopt.gaussian.resetDefaults -column 8 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
-    grid $gopt.gaussian.routeLbl -column 0 -row 1 -sticky nswe
-    grid $gopt.gaussian.route -column 1 -row 1 -columnspan 8 -sticky nswe
+    grid $gopt.gaussian.selector -column 0 -row 0 -columnspan 5 -sticky nsw
 
+    grid $gopt.gaussian.procLbl -column 0 -row 1 -sticky nswe
+    grid $gopt.gaussian.proc -column 1 -row 1 -sticky we
+    grid $gopt.gaussian.memLbl -column 2 -row 1 -sticky nswe
+    grid $gopt.gaussian.mem -column 3 -row 1 -sticky we
+    grid $gopt.gaussian.chargeLbl -column 4 -row 1 -sticky nswe
+    grid $gopt.gaussian.charge -column 5 -row 1 -sticky we
+    grid $gopt.gaussian.multLbl -column 6 -row 1 -sticky nswe
+    grid $gopt.gaussian.mult -column 7 -row 1 -sticky we
+    grid $gopt.gaussian.resetDefaults -column 8 -row 1 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gopt.gaussian.routeLbl -column 0 -row 2 -sticky nswe
+    grid $gopt.gaussian.route -column 1 -row 2 -columnspan 8 -sticky nswe
 
     # Run Buttons
     # -----------
-    ttk::button $gopt.writeCom -text "Write Gaussian Input File" \
+    ttk::button $gopt.writeCom -text "Write QM Software Input File" \
         -command {
+        # For the moment, stop the procedure if ORCA was selected
+#        if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#           ::ForceFieldToolKit::ORCA::tempORCAmessage
+#           return
+#        }
         ::ForceFieldToolKit::GeomOpt::writeComFile
-        ::ForceFieldToolKit::gui::consoleMessage "Gaussian input file written for geometry optimization"
+        ::ForceFieldToolKit::gui::consoleMessage "QM input file written for geometry optimization"
     }
     grid rowconfigure $gopt 2 -minsize 50
     grid $gopt.writeCom -column 0 -row 2 -sticky nswe -padx 10 -pady "10 0"; # -padx $buttonRunPadX -pady $buttonRunPadY
@@ -1283,11 +1325,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::pdb $tempfile }
         }
-    ttk::label $gopt.update.logLbl -text "Gaussian LOG File:" -anchor center
+    ttk::label $gopt.update.logLbl -text "QM Output File:" -anchor center
     ttk::entry $gopt.update.log -textvariable ::ForceFieldToolKit::GeomOpt::logFile
     ttk::button $gopt.update.logBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select a LOG File" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select an Output File" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::logFile $tempfile }
         }
     ttk::label $gopt.update.outPdbLbl -text "Output PDB File:" -anchor center
@@ -1314,8 +1356,22 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     # build update buttons
     ttk::frame $gopt.runUpdate
-    ttk::button $gopt.runUpdate.loadLog -text "Load Gaussian LOG File" -command { ::ForceFieldToolKit::GeomOpt::loadLogFile }
-    ttk::button $gopt.runUpdate.writeOptGeom -text "Write Optimized Geometry to PDB" -command { ::ForceFieldToolKit::GeomOpt::writeOptPDB }
+    ttk::button $gopt.runUpdate.loadLog -text "Load QM Output File" -command {
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#               ::ForceFieldToolKit::ORCA::tempORCAmessage
+#               return
+#            }
+            ::ForceFieldToolKit::GeomOpt::loadLogFile
+         }
+    ttk::button $gopt.runUpdate.writeOptGeom -text "Write Optimized Geometry to PDB" -command {
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#               ::ForceFieldToolKit::ORCA::tempORCAmessage
+#               return
+#            }
+            ::ForceFieldToolKit::GeomOpt::writeOptPDB 
+	 }
     # grid update buttons
     #grid rowconfigure $gopt 5 -minsize 50
     grid $gopt.runUpdate -column 0 -row 5 -sticky nswe
@@ -1495,10 +1551,14 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     # QM Settings Section
     #--------------------
+
     # build section to modify QM settings
     # frame to contain elements
-    ttk::labelframe $gzm.qm -labelanchor nw -padding $labelFrameInternalPadding -text "Gaussian Settings"
+    ttk::labelframe $gzm.qm -labelanchor nw -padding $labelFrameInternalPadding -text "QM Software Settings"
     # elements
+    # add QM Selector first
+    ttk::menubutton $gzm.qm.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
     ttk::label $gzm.qm.procLbl   -text "Processors:" -anchor w
     ttk::entry $gzm.qm.proc      -textvariable ::ForceFieldToolKit::GenZMatrix::qmProc -width 2 -justify center
     ttk::label $gzm.qm.chargeLbl -text "Charge:" -anchor w
@@ -1507,7 +1567,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry $gzm.qm.mem       -textvariable ::ForceFieldToolKit::GenZMatrix::qmMem -width 2 -justify center
     ttk::label $gzm.qm.multLbl   -text "Multiplicity:" -anchor w
     ttk::entry $gzm.qm.mult      -textvariable ::ForceFieldToolKit::GenZMatrix::qmMult -width 2 -justify center
-    ttk::button $gzm.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::GenZMatrix::resetGaussianDefaults }
+    ttk::button $gzm.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenZMatrix }
     ttk::label $gzm.qm.routeLbl  -text "Route:" -justify center
     ttk::entry $gzm.qm.route     -textvariable ::ForceFieldToolKit::GenZMatrix::qmRoute
 
@@ -1515,17 +1575,19 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gzm.qm -column 0 -row 4 -sticky nsew -padx $labelFramePadX -pady $labelFramePadY
     grid rowconfigure $gzm.qm {0 1} -uniform rt1
     
-    grid $gzm.qm.procLbl   -column 0 -row 0 -sticky w
-    grid $gzm.qm.proc      -column 1 -row 0 -sticky w    -padx $entryPadX -pady $entryPadY
-    grid $gzm.qm.memLbl    -column 2 -row 0 -sticky w
-    grid $gzm.qm.mem       -column 3 -row 0 -sticky w    -padx $entryPadX -pady $entryPadY
-    grid $gzm.qm.chargeLbl -column 4 -row 0 -sticky w
-    grid $gzm.qm.charge    -column 5 -row 0 -sticky w    -padx $entryPadX -pady $entryPadY
-    grid $gzm.qm.multLbl   -column 6 -row 0 -sticky w
-    grid $gzm.qm.mult      -column 7 -row 0 -sticky w    -padx $entryPadX -pady $entryPadY
-    grid $gzm.qm.defaults  -column 8 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
-    grid $gzm.qm.routeLbl  -column 0 -row 1 -sticky w    -padx $entryPadX -pady $entryPadY
-    grid $gzm.qm.route     -column 1 -row 1 -sticky nswe -columnspan 8
+    grid $gzm.qm.selector   -column 0 -row 0 -columnspan 5 -sticky nsw
+
+    grid $gzm.qm.procLbl   -column 0 -row 1 -sticky w
+    grid $gzm.qm.proc      -column 1 -row 1 -sticky w    -padx $entryPadX -pady $entryPadY
+    grid $gzm.qm.memLbl    -column 2 -row 1 -sticky w
+    grid $gzm.qm.mem       -column 3 -row 1 -sticky w    -padx $entryPadX -pady $entryPadY
+    grid $gzm.qm.chargeLbl -column 4 -row 1 -sticky w
+    grid $gzm.qm.charge    -column 5 -row 1 -sticky w    -padx $entryPadX -pady $entryPadY
+    grid $gzm.qm.multLbl   -column 6 -row 1 -sticky w
+    grid $gzm.qm.mult      -column 7 -row 1 -sticky w    -padx $entryPadX -pady $entryPadY
+    grid $gzm.qm.defaults  -column 8 -row 1 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gzm.qm.routeLbl  -column 0 -row 2 -sticky w    -padx $entryPadX -pady $entryPadY
+    grid $gzm.qm.route     -column 1 -row 2 -sticky nswe -columnspan 8
 
 
     # Generate Section
@@ -1534,37 +1596,54 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gzm.sep1 -column 0 -row 5 -sticky we -padx $hsepPadX -pady $hsepPadY
 
     ttk::frame $gzm.run
-    ttk::button $gzm.run.generate -text "Write Gaussian Input Files" -command {
+    ttk::button $gzm.run.generate -text "Write QM Software Input Files" -command {
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#               ::ForceFieldToolKit::ORCA::tempORCAmessage
+#               return
+#            }
         ::ForceFieldToolKit::GenZMatrix::genZmatrix
         ::ForceFieldToolKit::GenZMatrix::writeSPfiles
     }
-    ttk::button $gzm.run.loadCOM -text "Load GAU Files" \
+    ttk::button $gzm.run.loadCOM -text "Load QM Input Files" \
         -command {
-            set ::ForceFieldToolKit::gui::gzmCOMfiles [tk_getOpenFile -title "Select GAU File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::gauType]
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#               ::ForceFieldToolKit::ORCA::tempORCAmessage
+#               return
+#            }
+            set ::ForceFieldToolKit::gui::gzmCOMfiles [tk_getOpenFile -title "Select QWERTY QM File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllInpType]
             if { [llength $::ForceFieldToolKit::gui::gzmCOMfiles] eq 0 } {
-                return
+               return
             } else {
                foreach comfile $::ForceFieldToolKit::gui::gzmCOMfiles {
-                set molId [mol new]
-                ::QMtool::use_vmd_molecule $molId
-                ::QMtool::read_gaussian_input $comfile $molId
-                mol rename $molId "[file rootname [file tail $comfile]]"
-                }
+               # set molId [mol new]
+               # ::QMtool::use_vmd_molecule $molId
+               # ::QMtool::read_gaussian_input $comfile $molId
+                   set molId [::ForceFieldToolKit::GenZMatrix::loadCOMFile $comfile]
+                   mol rename $molId "[file rootname [file tail $comfile]]"
+               }
             }
-            ::ForceFieldToolKit::gui::consoleMessage "Gaussian GAU files loaded (Water Int.)"
+            ::ForceFieldToolKit::gui::consoleMessage "QM files loaded (Water Int.)"
         }
-    ttk::button $gzm.run.loadLOG -text "Load LOG Files" \
+    ttk::button $gzm.run.loadLOG -text "Load QM Output Files" \
         -command {
-            set ::ForceFieldToolKit::gui::gzmLOGfiles [tk_getOpenFile -title "Select LOG File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::logType]
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#               ::ForceFieldToolKit::ORCA::tempORCAmessage
+#               return
+#	    }
+            set ::ForceFieldToolKit::gui::gzmLOGfiles [tk_getOpenFile -title "Select QM Output File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if { [llength $::ForceFieldToolKit::gui::gzmLOGfiles] eq 0 } {
                 return
             } else {
                 set molList {}
                 foreach logfile $::ForceFieldToolKit::gui::gzmLOGfiles {
-                    set molId [mol new]
-                    ::QMtool::use_vmd_molecule $molId
+	 	    set molId [::ForceFieldToolKit::GenZMatrix::loadLOGFile $logfile]
+                    #set molId [mol new]
+                    #::QMtool::use_vmd_molecule $molId
                     #catch { ::QMtool::read_gaussian_log $logfile $molId }
-                    ::QMtool::read_gaussian_log $logfile $molId
+                    #::QMtool::read_gaussian_log $logfile $molId
                     mol rename $molId "[file rootname [file tail $logfile]]"
                     mol modselect 0 $molId "all and not element X"
                     lappend molList $molId
@@ -1584,7 +1663,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
                 mol top $bestMol
                 unset molList bestMol mostFrames
             }
-            ::ForceFieldToolKit::gui::consoleMessage "Gaussian LOG files loaded (Water Int.)"
+            ::ForceFieldToolKit::gui::consoleMessage "QM output files loaded (Water Int.)"
         }
 
     grid $gzm.run -column 0 -row 6 -columnspan 3 -sticky nswe
@@ -1976,6 +2055,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     # QM Target Data
     #---------------------
+
     # build elements
     ttk::labelframe $copt.qmt -labelanchor nw -padding $labelFrameInternalPadding
     ttk::label $copt.qmt.lblWidget -text "$downPoint QM Target Data" -anchor w -font TkDefaultFont
@@ -1995,28 +2075,30 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
         grid rowconfigure .fftk_gui.hlf.nb.chargeopt 4 -weight 1
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
+    # add QM selector
+    ttk::menubutton $copt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::frame $copt.qmt.spe
     ttk::label $copt.qmt.spe.lbl -text "Single Point Energy Data"
-    ttk::label $copt.qmt.spe.cmpdHFLogLbl -text "Cmpd LOG (HF):" -anchor w
+    ttk::label $copt.qmt.spe.cmpdHFLogLbl -text "Cmpd Output (HF):" -anchor w
     ttk::entry $copt.qmt.spe.cmpdHFLog -textvariable ::ForceFieldToolKit::ChargeOpt::baseHFLog
     ttk::button $copt.qmt.spe.cmpdHFLogBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select LOG File From Single Point Energy Calculation for Compound" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select Output File From Single Point Energy Calculation for Compound" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::baseHFLog $tempfile }
         }
-    ttk::label $copt.qmt.spe.cmpdMP2LogLbl -text "Cmpd LOG (MP2):" -anchor w
+    ttk::label $copt.qmt.spe.cmpdMP2LogLbl -text "Cmpd Output (MP2):" -anchor w
     ttk::entry $copt.qmt.spe.cmpdMP2Log -textvariable ::ForceFieldToolKit::ChargeOpt::baseMP2Log
     ttk::button $copt.qmt.spe.cmpdMP2LogBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select LOG File From Single Point Energy Calculation (MP2) for Compound" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select Output File From Single Point Energy Calculation (MP2) for Compound" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::baseMP2Log $tempfile }
         }
-    ttk::label $copt.qmt.spe.watLogLbl -text "Water LOG:" -anchor w
+    ttk::label $copt.qmt.spe.watLogLbl -text "Water Output:" -anchor w
     ttk::entry $copt.qmt.spe.watLog -textvariable ::ForceFieldToolKit::ChargeOpt::watLog
     ttk::button $copt.qmt.spe.watLogBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select LOG File From Single Point Energy Calculation for Water" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select Output File From Single Point Energy Calculation for Water" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::watLog $tempfile }
         }
 
@@ -2024,12 +2106,12 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     ttk::frame $copt.qmt.wie
     ttk::label $copt.qmt.wie.wieLbl -text "Water Interaction Energy Data" -anchor w
-    ttk::label $copt.qmt.wie.logFileLbl -text "LOG File" -anchor w
+    ttk::label $copt.qmt.wie.logFileLbl -text "Output File" -anchor w
     ttk::label $copt.qmt.wie.atomNameLbl -text "Atom Name" -anchor center
     ttk::label $copt.qmt.wie.weightLbl -text "Weight" -anchor center
     ttk::treeview $copt.qmt.wie.logData -selectmode browse -yscrollcommand "$copt.qmt.wie.logScroll set"
         $copt.qmt.wie.logData configure -columns {logFile atomName weight} -show {} -height 7
-        $copt.qmt.wie.logData heading logFile -text "LOG File" -anchor w
+        $copt.qmt.wie.logData heading logFile -text "Output File" -anchor w
         $copt.qmt.wie.logData heading atomName -text "Atom Name" -anchor w
         $copt.qmt.wie.logData heading weight -text "Weight" -anchor w
         $copt.qmt.wie.logData column logFile -width 400
@@ -2040,7 +2122,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::button $copt.qmt.wie.import -text "Add" \
         -command {
             # read in files, multiple allowed
-            set fileList [tk_getOpenFile -title "Select LOG File(s) from Water Interaction Calculations" -multiple 1 -filetypes $::ForceFieldToolKit::gui::logType]
+            set fileList [tk_getOpenFile -title "Select Output File(s) from Water Interaction Calculations" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllLogType]
             foreach logFile $fileList {
                 if {![string eq $logFile ""]} {
                     # attempt to parse atom name by genZmatrix naming scheme, or set atom name as ???
@@ -2073,7 +2155,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry $copt.qmt.wie.editFrame.editLog -textvariable ::ForceFieldToolKit::gui::coptEditLog
     ttk::button $copt.qmt.wie.editFrame.editBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select LOG File From Water Interaction Calculation" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select Output File From Water Interaction Calculation" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::gui::coptEditLog $tempfile }
         }
     ttk::entry $copt.qmt.wie.editAtomName -textvariable ::ForceFieldToolKit::gui::coptEditAtomName -width 1 -justify center
@@ -2096,7 +2178,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid remove $copt.qmt
     grid $copt.qmtPlaceHolder -column 0 -row 4 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
-    grid $copt.qmt.spe -column 0 -row 0 -sticky nsew
+    grid $copt.qmt.selector   -column 0 -row 0 -columnspan 1 -sticky w
+
+    grid $copt.qmt.spe -column 0 -row 1 -sticky nsew
     grid columnconfigure $copt.qmt.spe 1 -weight 1
     grid rowconfigure $copt.qmt.spe {0 1} -uniform rt1
 
@@ -2111,9 +2195,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $copt.qmt.spe.watLog -column 1 -row 3 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $copt.qmt.spe.watLogBrowse -column 2 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
 
-    grid $copt.qmt.sep1 -column 0 -row 1 -sticky we -padx $hsepPadX -pady $hsepPadY
+    grid $copt.qmt.sep1 -column 0 -row 2 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
-    grid $copt.qmt.wie -column 0 -row 2 -sticky nsew
+    grid $copt.qmt.wie -column 0 -row 3 -sticky nsew
     grid columnconfigure $copt.qmt.wie 0 -weight 1
     grid columnconfigure $copt.qmt.wie 1 -minsize 90 -weight 0
     grid columnconfigure $copt.qmt.wie 2 -minsize 60 -weight 0
@@ -2494,7 +2578,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::label $copt.status.lbl -text "Status:" -anchor w
     ttk::label $copt.status.txt -textvariable ::ForceFieldToolKit::gui::coptStatus -anchor w
     ttk::button $copt.runOpt -text "Run Optimization" \
-        -command { ::ForceFieldToolKit::gui::coptRunOpt }
+        -command {
+               # For the moment, stop the procedure if ORCA was selected
+#                if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#                ::ForceFieldToolKit::ORCA::tempORCAmessage
+#                return
+#                }
+	        ::ForceFieldToolKit::gui::coptRunOpt }
 
     grid $copt.sep1 -column 0 -row 7 -sticky we -padx $hsepPadX -pady $hsepPadY
     grid $copt.status -column 0 -row 8 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
@@ -2507,6 +2597,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     #---------------------------------------------------#
     #  RESP Calc. tab                                   #
     #---------------------------------------------------#
+
 
     # build the ESP frame, add it to the notebook as a tab
     ttk::frame $w.hlf.nb.calcESP
@@ -2530,27 +2621,31 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     grid columnconfigure $cesp.selectorFrame 1 -minsize 15 -weight 1
 
+    # add QM Selector
+    ttk::menubutton $cesp.qmselector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
+    grid $cesp.qmselector   -column 0 -row 2 -columnspan 5 -sticky nsw
 
     # IO
     # Build the IO
     ttk::labelframe $cesp.io -labelanchor nw -padding $labelFrameInternalPadding -text "Input/Output"
-    ttk::label $cesp.io.chkLbl -text "Opt. Geom. CHK File:" -anchor nw
+    ttk::label $cesp.io.chkLbl -text "Opt. Geom. CHK/OUT/PDB File:" -anchor nw
     ttk::entry $cesp.io.chk -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::chk -width 44
     ttk::button $cesp.io.chkBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select a Checkpoint File" -filetypes $::ForceFieldToolKit::gui::chkType]
+            set tempfile [tk_getOpenFile -title "Select a Checkpoint, Output or PDB File" -filetypes $::ForceFieldToolKit::gui::ESPChkType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::ESP::chk $tempfile }
         }
-    ttk::label $cesp.io.gauLbl -text "Output GAU File:" -anchor w
+    ttk::label $cesp.io.gauLbl -text "Output QM File:" -anchor w
     ttk::entry $cesp.io.gau -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::gau -width 44
     ttk::button $cesp.io.gauSaveAs -text "SaveAs" \
         -command {
-            set tempfile [tk_getSaveFile -title "Save the Gaussian Input File As..." -filetypes $::ForceFieldToolKit::gui::gauType -defaultextension {.gau}]
+            set tempfile [tk_getSaveFile -title "Save the QM Input File As..." -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension {.gau}]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::ESP::gau $tempfile }
         }
 
     # Grid the IO
-    grid $cesp.io -column 0 -row 2 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $cesp.io -column 0 -row 3 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $cesp.io {1}   -weight 1 ; # entry boxes
     grid columnconfigure $cesp.io {0 2} -weight 0
     grid rowconfigure $cesp.io    {0 1} -uniform rt1
@@ -2563,8 +2658,8 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $cesp.io.gauSaveAs -column 2 -row 1              -padx $vbuttonPadX -pady $vbuttonPadY
 
     # QM Settings
-    # build Gaussian settings
-    ttk::labelframe $cesp.qm -labelanchor nw -padding $labelFrameInternalPadding -text "Gaussian Settings"
+    # build QM settings
+    ttk::labelframe $cesp.qm -labelanchor nw -padding $labelFrameInternalPadding -text "QM Settings"
     ttk::label      $cesp.qm.procLbl -text "Processors:" -anchor w
     ttk::entry      $cesp.qm.proc -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qmProc -width 2 -justify center
     ttk::label      $cesp.qm.memLbl -text "Memory(GB):" -anchor w
@@ -2575,10 +2670,10 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry      $cesp.qm.mult -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qmMult -width 2 -justify center
     ttk::label      $cesp.qm.routeLbl -text "Route:" -anchor center
     ttk::entry      $cesp.qm.route -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute
-    ttk::button     $cesp.qm.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::gui::resetGaussianDefaultsESP }
+    ttk::button     $cesp.qm.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsESP }
 
-    # grid Gaussian settings
-    grid $cesp.qm -column 0 -row 3 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    # grid QM settings
+    grid $cesp.qm -column 0 -row 4 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid rowconfigure $cesp.qm {0 1} -uniform rt1
 
     grid $cesp.qm.procLbl        -column 0 -row 0 -sticky w
@@ -2595,13 +2690,18 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     # Run Buttons
     ttk::separator $cesp.runSep -orient horizontal
-    ttk::button $cesp.writeGau -text "Write Gaussian Input File" \
+    ttk::button $cesp.writeGau -text "Write QM Input File" \
         -command {
+        # For the moment, stop the procedure if ORCA was selected
+#        if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#            ::ForceFieldToolKit::ORCA::tempORCAmessage
+#            return
+#        }
             ::ForceFieldToolKit::ChargeOpt::ESP::writeGauFile
-            ::ForceFieldToolKit::gui::consoleMessage "Gaussian input file written for ESP calculation"
+            ::ForceFieldToolKit::gui::consoleMessage "QM input file written for ESP calculation"
         }
-    grid $cesp.runSep   -column 0 -row 4 -sticky nwe -padx $hsepPadX -pady $hsepPadY
-    grid $cesp.writeGau -column 0 -row 5 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid $cesp.runSep   -column 0 -row 5 -sticky nwe -padx $hsepPadX -pady $hsepPadY
+    grid $cesp.writeGau -column 0 -row 6 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
     grid rowconfigure $cesp 5 -minsize 50
 
     #---------------------------------------------------#
@@ -2970,11 +3070,16 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid remove $oesp.inSettings
     grid $oesp.inSettingsPlaceHolder -column 0 -row 4 -sticky nsew -padx $placeHolderPadX -pady $placeHolderPadY
 
-    ttk::label $oesp.inSettings.gauLogLbl -text "Gaussian ESP Log:" -anchor center
+    # add QM Selector
+    ttk::menubutton $oesp.inSettings.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
+    grid $oesp.inSettings.selector   -column 0 -row 0 -columnspan 3 -sticky w
+
+    ttk::label $oesp.inSettings.gauLogLbl -text "QM ESP LOG/OUT" -anchor center
     ttk::entry $oesp.inSettings.gauLog -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::gauLog
     ttk::button $oesp.inSettings.gauLogBrowse -text "Browse"   \
         -command {
-            set tempfile [tk_getOpenFile -title "Select a Gaussian Log File" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select a QM Output File" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::ESP::gauLog $tempfile }
         }
     ttk::label  $oesp.inSettings.fileNameLbl -text "Input Files Basename:" -anchor center
@@ -2990,11 +3095,16 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry  $oesp.inSettings.qwt           -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qwt    -justify center -width 10  
     ttk::label  $oesp.inSettings.iqoptLbl      -text "iqopt:"  -anchor center
     ttk::entry  $oesp.inSettings.iqopt         -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::iqopt  -justify center -width 5
-    ttk::button $oesp.inSettings.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::gui::resetInputDefaultsESP }
+    ttk::button $oesp.inSettings.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::SharedFcns::resetInputDefaultsESP }
         
     ttk::separator $oesp.inSettings.sep1 -orient horizontal
     ttk::button    $oesp.inSettings.writeInput -text "Write Input Files" \
         -command {
+        	# For the moment, stop the procedure if ORCA was selected
+#        	if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#           	::ForceFieldToolKit::ORCA::tempORCAmessage
+#           	return
+#        	}
                 ::ForceFieldToolKit::ChargeOpt::ESP::writeDatFile
                 
                 # gather the TV data
@@ -3012,22 +3122,22 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
         }
 
     # grid elements
-    grid $oesp.inSettings.gauLogLbl     -column 0 -row 0 -sticky nswe
-    grid $oesp.inSettings.gauLog        -column 1 -row 0 -columnspan 7 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $oesp.inSettings.gauLogBrowse  -column 8 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $oesp.inSettings.fileNameLbl   -column 0 -row 1 -sticky nswe
-    grid $oesp.inSettings.fileName      -column 1 -row 1 -columnspan 7 -sticky nswe
-    grid $oesp.inSettings.saveAs        -column 8 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $oesp.inSettings.ihfreeLbl     -column 0 -row 2 -sticky nswe
-    grid $oesp.inSettings.ihfree        -column 1 -row 2 -sticky we
-    grid $oesp.inSettings.qwtLbl        -column 2 -row 2 -sticky nswe
-    grid $oesp.inSettings.qwt           -column 3 -row 2 -sticky we  
-    grid $oesp.inSettings.iqoptLbl      -column 4 -row 2 -sticky nswe
-    grid $oesp.inSettings.iqopt         -column 5 -row 2 -sticky we
-    grid $oesp.inSettings.resetDefaults -column 6 -row 2 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $oesp.inSettings.gauLogLbl     -column 0 -row 1 -sticky nswe
+    grid $oesp.inSettings.gauLog        -column 1 -row 1 -columnspan 7 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $oesp.inSettings.gauLogBrowse  -column 8 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $oesp.inSettings.fileNameLbl   -column 0 -row 2 -sticky nswe
+    grid $oesp.inSettings.fileName      -column 1 -row 2 -columnspan 7 -sticky nswe
+    grid $oesp.inSettings.saveAs        -column 8 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $oesp.inSettings.ihfreeLbl     -column 0 -row 3 -sticky nswe
+    grid $oesp.inSettings.ihfree        -column 1 -row 3 -sticky we
+    grid $oesp.inSettings.qwtLbl        -column 2 -row 3 -sticky nswe
+    grid $oesp.inSettings.qwt           -column 3 -row 3 -sticky we  
+    grid $oesp.inSettings.iqoptLbl      -column 4 -row 3 -sticky nswe
+    grid $oesp.inSettings.iqopt         -column 5 -row 3 -sticky we
+    grid $oesp.inSettings.resetDefaults -column 6 -row 3 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
 
-    grid $oesp.inSettings.sep1          -column 0 -row 3 -columnspan 9 -sticky we   -padx $hsepPadX -pady $hsepPadY
-    grid $oesp.inSettings.writeInput    -column 0 -row 4 -columnspan 9 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid $oesp.inSettings.sep1          -column 0 -row 4 -columnspan 9 -sticky we   -padx $hsepPadX -pady $hsepPadY
+    grid $oesp.inSettings.writeInput    -column 0 -row 5 -columnspan 9 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
 
         
     # Calc. ESP section
@@ -3068,6 +3178,8 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
         }
 ##    ttk::label  $oesp.runESP.newPsfName    -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::newPsfName
     ttk::label  $oesp.runESP.respPathLbl   -text "RESP Path:" -anchor center
+# TEMPORARY PATH FOR RESP, TO BE DELETED
+set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/bin/resp"
     ttk::entry  $oesp.runESP.respPath      -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::respPath
     ttk::button $oesp.runESP.respBrowse    -text "Browse"   \
         -command {
@@ -3085,6 +3197,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::separator $oesp.runESP.runSep -orient horizontal
     ttk::button $oesp.runESP.runESP -text "Calc. RESP Charges" \
         -command { 
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
             ::ForceFieldToolKit::ChargeOpt::ESP::runESP
             ::ForceFieldToolKit::ChargeOpt::ESP::updatePSF
         }
@@ -3137,6 +3254,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # for shorter naming convention
     set genbonded $w.hlf.nb.genbonded
 
+    # add QM Selector
+    ttk::menubutton $genbonded.qmselector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
     # GENERATE HESSIAN
     # -----------------
     # build hess elements
@@ -3157,25 +3277,25 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::geomOptPDB $tempfile }
         }
-    ttk::label $genbonded.hess.geomCHKLbl -text "Opt. Geom. CHK File:" -anchor center
+    ttk::label $genbonded.hess.geomCHKLbl -text "Opt. Geom. CHK/OUT File:" -anchor center
     ttk::entry $genbonded.hess.geomCHK -textvariable ::ForceFieldToolKit::GenBonded::geomCHK
     ttk::button $genbonded.hess.geomCHKBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select the Geometry Optimization Checkpoint File" -filetypes $::ForceFieldToolKit::gui::chkType]
+            set tempfile [tk_getOpenFile -title "Select the Geometry Optimization Checkpoint/Output File" -filetypes $::ForceFieldToolKit::gui::AllChkType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GenBonded::geomCHK $tempfile }
         }
-    ttk::label $genbonded.hess.comLbl -text "Output GAU File:" -anchor center
+    ttk::label $genbonded.hess.comLbl -text "Output QM File:" -anchor center
     ttk::entry $genbonded.hess.com -textvariable ::ForceFieldToolKit::GenBonded::com
     ttk::button $genbonded.hess.comSaveAs -text "SaveAs" \
         -command {
-            set tempfile [tk_getSaveFile -title "Save Gaussian Input File As..." -initialfile "$::ForceFieldToolKit::GenBonded::com" -filetypes $::ForceFieldToolKit::gui::gauType -defaultextension {.gau}]
+            set tempfile [tk_getSaveFile -title "Save QM Input File As..." -initialfile "$::ForceFieldToolKit::GenBonded::com" -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension {.gau}]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GenBonded::com $tempfile }
         }
 
     ttk::separator $genbonded.hess.sep1 -orient horizontal
 
     ttk::frame $genbonded.hess.gaussian
-    ttk::label $genbonded.hess.gaussian.lbl -text "Gaussian Settings:"
+    ttk::label $genbonded.hess.gaussian.lbl -text "QM Settings:"
     ttk::label $genbonded.hess.gaussian.qmProcLbl -text "Processors:" -anchor w
     ttk::entry $genbonded.hess.gaussian.qmProc -textvariable ::ForceFieldToolKit::GenBonded::qmProc -width 2 -justify center
     ttk::label $genbonded.hess.gaussian.qmMemLbl -text "Memory (GB):" -anchor w
@@ -3183,18 +3303,25 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::label $genbonded.hess.gaussian.qmRouteLbl -text "Route:" -anchor center
     ttk::entry $genbonded.hess.gaussian.qmRoute -textvariable ::ForceFieldToolKit::GenBonded::qmRoute
 
-    ttk::button $genbonded.hess.gaussian.reset2defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::GenBonded::resetGaussianDefaults }
+    ttk::button $genbonded.hess.gaussian.reset2defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenBonded }
 
     ttk::separator $genbonded.hess.sep2 -orient horizontal
 
-    ttk::button $genbonded.hess.writeHessCom -text "Write Gaussian Input File" \
+    ttk::button $genbonded.hess.writeHessCom -text "Write QM Input File" \
         -command {
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
             ::ForceFieldToolKit::GenBonded::writeComFile
-            ::ForceFieldToolKit::gui::consoleMessage "Gaussian GAU file written for hessian calculation"
+            ::ForceFieldToolKit::gui::consoleMessage "QM file written for hessian calculation"
         }
 
     # grid hess elements
-    grid $genbonded.hess -column 0 -row 0 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $genbonded.qmselector -column 0 -row 0 -columnspan 5 -sticky sw
+
+    grid $genbonded.hess       -column 0 -row 1 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $genbonded.hess 1 -weight 1
     grid rowconfigure $genbonded.hess {1 2 3 4} -uniform rt1
     grid rowconfigure $genbonded.hess 8 -minsize 50
@@ -3255,11 +3382,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             set tempfile [tk_getOpenFile -title "Select a Template Parameter File" -filetypes $::ForceFieldToolKit::gui::parType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GenBonded::templateParFile $tempfile }
         }
-    ttk::label $genbonded.calcBonded.glogLbl -text "Gaussian LOG File:" -anchor center
+    ttk::label $genbonded.calcBonded.glogLbl -text "QM Output File:" -anchor center
     ttk::entry $genbonded.calcBonded.glog -textvariable ::ForceFieldToolKit::GenBonded::glog
     ttk::button $genbonded.calcBonded.glogBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select Hessian Calculation Log File" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select Hessian Calculation Output File" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GenBonded::glog $tempfile }
         }
     ttk::label $genbonded.calcBonded.blogLbl -text "Output File:" -anchor center
@@ -3324,6 +3451,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     # INPUT section
     # ---------------------#
+
     # build input frame
     ttk::labelframe $baopt.input -labelanchor nw -padding $labelFrameInternalPadding
     ttk::label $baopt.input.lblWidget -text "$downPoint Input" -anchor w -font TkDefaultFont
@@ -3347,6 +3475,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     }
 
     # build input elements
+    # add QM Selector
+    ttk::menubutton $baopt.input.qmselector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
     ttk::label $baopt.input.psfPathLbl -anchor center -text "PSF File:"
     ttk::entry $baopt.input.psfPath -textvariable ::ForceFieldToolKit::Configuration::chargeOptPSF
     ttk::button $baopt.input.psfPathBrowse -text "Browse" \
@@ -3361,11 +3492,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::geomOptPDB $tempfile }
         }
-    ttk::label $baopt.input.hessPathLbl -anchor center -text "Hess LOG File:"
+    ttk::label $baopt.input.hessPathLbl -anchor center -text "Hess Output File:"
     ttk::entry $baopt.input.hessPath -textvariable ::ForceFieldToolKit::BondAngleOpt::hessLog
     ttk::button $baopt.input.hessPathBrowse -text "Browse" \
         -command {
-            set tempfile [tk_getOpenFile -title "Select the Hessian Log File" -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfile [tk_getOpenFile -title "Select the Hessian Output File" -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::BondAngleOpt::hessLog $tempfile }
         }
 
@@ -3421,37 +3552,39 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $baopt.inputPlaceHolder -column 0 -row 0 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
     # grid input elements
-    grid $baopt.input.psfPathLbl -column 0 -row 0 -sticky nswe
-    grid $baopt.input.psfPath -column 1 -row 0 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $baopt.input.psfPathBrowse -column 3 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $baopt.input.pdbPathLbl -column 0 -row 1 -sticky nswe
-    grid $baopt.input.pdbPath -column 1 -row 1 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $baopt.input.pdbPathBrowse -column 3 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $baopt.input.hessPathLbl -column 0 -row 2 -sticky nswe
-    grid $baopt.input.hessPath -column 1 -row 2 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $baopt.input.hessPathBrowse -column 3 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $baopt.input.parInProgLbl -column 0 -row 3 -sticky nswe
-    grid $baopt.input.parInProg -column 1 -row 3 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $baopt.input.parInProgBrowse -column 3 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.qmselector -column 0 -row 0 -columnspan 5 -sticky nsw
 
-    grid $baopt.input.sep1 -column 0 -row 4 -columnspan 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $baopt.input.psfPathLbl -column 0 -row 1 -sticky nswe
+    grid $baopt.input.psfPath -column 1 -row 1 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $baopt.input.psfPathBrowse -column 3 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.pdbPathLbl -column 0 -row 2 -sticky nswe
+    grid $baopt.input.pdbPath -column 1 -row 2 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $baopt.input.pdbPathBrowse -column 3 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.hessPathLbl -column 0 -row 3 -sticky nswe
+    grid $baopt.input.hessPath -column 1 -row 3 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $baopt.input.hessPathBrowse -column 3 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.parInProgLbl -column 0 -row 4 -sticky nswe
+    grid $baopt.input.parInProg -column 1 -row 4 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $baopt.input.parInProgBrowse -column 3 -row 4 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+
+    grid $baopt.input.sep1 -column 0 -row 5 -columnspan 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
 
-    grid $baopt.input.parLbl -column 0 -row 5 -columnspan 2 -sticky nswe
-    grid $baopt.input.parFiles -column 0 -row 6 -columnspan 2 -rowspan 4 -sticky nswe
-    grid $baopt.input.parScroll -column 2 -row 6 -rowspan 4 -sticky nswe
-    grid $baopt.input.parFilesAdd -column 3 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $baopt.input.parFilesDelete -column 3 -row 7 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $baopt.input.parFilesClear -column 3 -row 8 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.parLbl -column 0 -row 6 -columnspan 2 -sticky nswe
+    grid $baopt.input.parFiles -column 0 -row 7 -columnspan 2 -rowspan 4 -sticky nswe
+    grid $baopt.input.parScroll -column 2 -row 7 -rowspan 4 -sticky nswe
+    grid $baopt.input.parFilesAdd -column 3 -row 7 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.parFilesDelete -column 3 -row 8 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.parFilesClear -column 3 -row 9 -sticky nwe -padx $vbuttonPadX -pady $vbuttonPadY
 
-    grid $baopt.input.sep2 -column 0 -row 10 -columnspan 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $baopt.input.sep2 -column 0 -row 11 -columnspan 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
-    grid $baopt.input.namdbinLbl -column 0 -row 11 -sticky nswe
-    grid $baopt.input.namdbin -column 1 -row 11 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $baopt.input.namdBrowse -column 3 -row 11 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $baopt.input.logLbl -column 0 -row 12 -sticky nswe
-    grid $baopt.input.log -column 1 -row 12 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $baopt.input.logSaveAs -column 3 -row 12 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.namdbinLbl -column 0 -row 12 -sticky nswe
+    grid $baopt.input.namdbin -column 1 -row 12 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $baopt.input.namdBrowse -column 3 -row 12 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $baopt.input.logLbl -column 0 -row 13 -sticky nswe
+    grid $baopt.input.log -column 1 -row 13 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $baopt.input.logSaveAs -column 3 -row 13 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
 
 
     # PARAMETERS TO OPTIMIZE
@@ -3896,7 +4029,14 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::label $baopt.status.lbl -text "Status:"
     ttk::label $baopt.status.txt -textvariable ::ForceFieldToolKit::gui::baoptStatus
 
-    ttk::button $baopt.runOpt -text "Run Optimization" -command { ::ForceFieldToolKit::gui::baoptRunOpt }
+    ttk::button $baopt.runOpt -text "Run Optimization" -command {
+            # For the moment, stop the procedure if ORCA was selected
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+            ::ForceFieldToolKit::gui::baoptRunOpt
+            }
 
     # grid run
     grid $baopt.status -column 0 -row 6 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
@@ -4143,8 +4283,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 
     # GAUSSIAN SETTINGS
     # -----------------
-    # build gaussian settings
-    ttk::labelframe $gds.qm -text "Gaussian Settings" -labelanchor nw -padding $labelFrameInternalPadding
+
+    # build QM settings
+    ttk::labelframe $gds.qm -text "QM Settings" -labelanchor nw -padding $labelFrameInternalPadding
+
+    # add QM Selector
+    ttk::menubutton $gds.qm.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
     ttk::label $gds.qm.procLbl -text "Processors:" -anchor w
     ttk::entry $gds.qm.proc -textvariable ::ForceFieldToolKit::GenDihScan::qmProc -width 2 -justify center
     ttk::label $gds.qm.chargeLbl -text "Charge:" -anchor w
@@ -4153,25 +4298,28 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry $gds.qm.mem -textvariable ::ForceFieldToolKit::GenDihScan::qmMem -width 2 -justify center
     ttk::label $gds.qm.multLbl -text "Multiplicity:" -anchor w
     ttk::entry $gds.qm.mult -textvariable ::ForceFieldToolKit::GenDihScan::qmMult -width 2 -justify center
-    ttk::button $gds.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::GenDihScan::resetGaussianDefaults }
+    ttk::button $gds.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenDihScan }
     ttk::label $gds.qm.routeLbl -text "Route:" -justify center
     ttk::entry $gds.qm.route -textvariable ::ForceFieldToolKit::GenDihScan::qmRoute
 
 
-    # grid gaussian settings
+    # grid QM settings
     grid $gds.qm -column 0 -row 4 -sticky nswe
     grid rowconfigure $gds.qm {0 1} -uniform rt1
-    grid $gds.qm.procLbl -column 0 -row 0 -sticky w
-    grid $gds.qm.proc -column 1 -row 0 -sticky w
-    grid $gds.qm.memLbl -column 2 -row 0 -sticky w
-    grid $gds.qm.mem -column 3 -row 0 -sticky w
-    grid $gds.qm.chargeLbl -column 4 -row 0 -sticky w
-    grid $gds.qm.charge -column 5 -row 0 -sticky w
-    grid $gds.qm.multLbl -column 6 -row 0 -sticky w
-    grid $gds.qm.mult -column 7 -row 0 -sticky w
-    grid $gds.qm.defaults -column 8 -row 0 -sticky we -padx $hbuttonPadX -pady $hbuttonPadY
-    grid $gds.qm.routeLbl -column 0 -row 1
-    grid $gds.qm.route -column 1 -row 1 -columnspan 8 -sticky nswe -padx $entryPadX -pady $entryPadY
+
+    grid $gds.qm.selector   -column 0 -row 0 -columnspan 5 -sticky nsw
+
+    grid $gds.qm.procLbl -column 0 -row 1 -sticky w
+    grid $gds.qm.proc -column 1 -row 1 -sticky w
+    grid $gds.qm.memLbl -column 2 -row 1 -sticky w
+    grid $gds.qm.mem -column 3 -row 1 -sticky w
+    grid $gds.qm.chargeLbl -column 4 -row 1 -sticky w
+    grid $gds.qm.charge -column 5 -row 1 -sticky w
+    grid $gds.qm.multLbl -column 6 -row 1 -sticky w
+    grid $gds.qm.mult -column 7 -row 1 -sticky w
+    grid $gds.qm.defaults -column 8 -row 1 -sticky we -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gds.qm.routeLbl -column 0 -row 2
+    grid $gds.qm.route -column 1 -row 2 -columnspan 8 -sticky nswe -padx $entryPadX -pady $entryPadY
 
     # build/grid a separator
     ttk::separator $gds.sep3 -orient horizontal
@@ -4183,37 +4331,54 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::frame $gds.generate
     ttk::button $gds.generate.go -text "Generate Dihedral Scan Input" \
         -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
             set ::ForceFieldToolKit::GenDihScan::dihData {}
             foreach ele [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv children {}] {
                 lappend ::ForceFieldToolKit::GenDihScan::dihData [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv item $ele -values]
             }
             ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
-            ::ForceFieldToolKit::gui::consoleMessage "Gaussian GAU files written (Scan Torsions)"
+            ::ForceFieldToolKit::gui::consoleMessage "QM files written (Scan Torsions)"
         }
-    ttk::button $gds.generate.load -text "Load Dihedral Scan LOG Files" \
+    ttk::button $gds.generate.load -text "Load Dihedral Scan Output Files" \
         -command {
-            set glogs [tk_getOpenFile -title "Select LOG File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::logType]
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+            set glogs [tk_getOpenFile -title "Select Output File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllLogType]
             if { [llength $glogs] == 0 } {
                 unset glogs
                 return
-            } elseif { $::ForceFieldToolKit::GenDihScan::psf eq "" || ![file exists $::ForceFieldToolKit::GenDihScan::psf] } {
+            ### The psf and pdb variable names here were changed. The previous variable names could point to no files.
+            } elseif { $::ForceFieldToolKit::Configuration::chargeOptPSF eq "" || ![file exists $::ForceFieldToolKit::Configuration::chargeOptPSF] } {
                 tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PSF file."
                 unset glogs
                 return
-            } elseif { $::ForceFieldToolKit::GenDihScan::pdb eq "" || ![file exists $::ForceFieldToolKit::GenDihScan::pdb] } {
+            } elseif { $::ForceFieldToolKit::Configuration::geomOptPDB eq "" || ![file exists $::ForceFieldToolKit::Configuration::geomOptPDB] } {
                 tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PDB file."
                 unset glogs
                 return
             } else {
                 set scanData [::ForceFieldToolKit::DihOpt::parseGlog $glogs]
-                ::ForceFieldToolKit::DihOpt::vmdLoadQMData $::ForceFieldToolKit::GenDihScan::psf $::ForceFieldToolKit::GenDihScan::pdb $scanData
+		# Continue only if scanData contains some information, namely if there was no error during the parseGlog procedure
+                if { $scanData ne "" } {::ForceFieldToolKit::DihOpt::vmdLoadQMData $::ForceFieldToolKit::Configuration::chargeOptPSF $::ForceFieldToolKit::Configuration::geomOptPDB $scanData
                 unset scanData
                 unset glogs
-                ::ForceFieldToolKit::gui::consoleMessage "Gaussian LOG file(s) loaded (Scan Torsions)"
+                ::ForceFieldToolKit::gui::consoleMessage "QM output file(s) loaded (Scan Torsions)"
+		}
             }
         }
 
-    ttk::button $gds.generate.torexplor -text "Open Torsion Explorer" -command { ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI }
+    ttk::button $gds.generate.torexplor -text "Open Torsion Explorer" -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+	    ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI 
+	    }
 
     # grid generate section
     grid $gds.generate -column 0 -row 6 -sticky nswe
@@ -4361,15 +4526,18 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
-    # build QM target data (Gaussian Log files) elements
-    ttk::label $dopt.qmt.lbl -text "Gaussian Dihedral Scan LOG Files" -anchor w
+    # build QM target data (Log files) elements
+    # QM selector
+    ttk::menubutton $dopt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15 
+
+    ttk::label $dopt.qmt.lbl -text "QM Dihedral Scan Output Files" -anchor w
     ttk::treeview $dopt.qmt.tv -selectmode browse -yscrollcommand "$dopt.qmt.scroll set"
         $dopt.qmt.tv configure -columns {filename} -show {} -height 5
         $dopt.qmt.tv column filename -stretch 1
     ttk::scrollbar $dopt.qmt.scroll -orient vertical -command "$dopt.qmt.tv yview"
     ttk::button $dopt.qmt.add -text "Add" \
         -command {
-            set tempfiles [tk_getOpenFile -title "Select LOG File(s) for Dihedral Scan Calculations" -multiple 1 -filetypes $::ForceFieldToolKit::gui::logType]
+            set tempfiles [tk_getOpenFile -title "Select Output File(s) for Dihedral Scan Calculations" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllLogType]
             foreach tempfile $tempfiles {
                 if {![string eq $tempfile ""]} { .fftk_gui.hlf.nb.dihopt.qmt.tv insert {} end -values $tempfile }
             }
@@ -4414,15 +4582,17 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid remove $dopt.qmt
     grid $dopt.qmtPlaceHolder -column 0 -row 1 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
-    grid $dopt.qmt.lbl -column 0 -row 0 -sticky nswe
-    grid $dopt.qmt.tv -column 0 -row 1 -rowspan 7 -sticky nswe
-    grid $dopt.qmt.scroll -column 1 -row 1 -rowspan 7 -sticky nswe
-    grid $dopt.qmt.add -column 2 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $dopt.qmt.moveUp -column 2 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $dopt.qmt.moveDown -column 2 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $dopt.qmt.sep1 -column 2 -row 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
-    grid $dopt.qmt.delete -column 2 -row 5 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $dopt.qmt.clear -column 2 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $dopt.qmt.selector -column 0 -row 0 -columnspan 5 -sticky nsw
+
+    grid $dopt.qmt.lbl -column 0 -row 1 -sticky nswe
+    grid $dopt.qmt.tv -column 0 -row 2 -rowspan 7 -sticky nswe
+    grid $dopt.qmt.scroll -column 1 -row 2 -rowspan 7 -sticky nswe
+    grid $dopt.qmt.add -column 2 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $dopt.qmt.moveUp -column 2 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $dopt.qmt.moveDown -column 2 -row 4 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $dopt.qmt.sep1 -column 2 -row 5 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $dopt.qmt.delete -column 2 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $dopt.qmt.clear -column 2 -row 7 -sticky nwe -padx $vbuttonPadX -pady $vbuttonPadY
 
 
     # DIH PARAMETER SETTINGS
@@ -5210,7 +5380,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # build/grid a refine run section
     ttk::frame $dopt.refine.run
     ttk::button $dopt.refine.run.runManualRefine -text "Compute MM PES from Refinement Parameters" -command { ::ForceFieldToolKit::gui::doptRunManualRefine }
-    ttk::button $dopt.refine.run.runRefine -text "Run Refitting/Refinement" -command { ::ForceFieldToolKit::gui::doptRunRefine }
+    ttk::button $dopt.refine.run.runRefine -text "Run Refitting/Refinement" -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+	    ::ForceFieldToolKit::gui::doptRunRefine 
+	    }
 
     # grid the refinement run section
     grid $dopt.refine.run -column 0 -row 6 -sticky nswe
@@ -5230,7 +5406,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::frame $dopt.status
     ttk::label $dopt.status.lbl -text "Status:" -anchor w
     ttk::label $dopt.status.txt -textvariable ::ForceFieldToolKit::gui::doptStatus -anchor w
-    ttk::button $dopt.runOpt -text "Run Optimization" -command { ::ForceFieldToolKit::gui::doptRunOpt }
+    ttk::button $dopt.runOpt -text "Run Optimization" -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+	    ::ForceFieldToolKit::gui::doptRunOpt 
+	    }
 
     # grid the run section
     grid $dopt.status -column 0 -row 8 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY

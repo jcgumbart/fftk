@@ -1,10 +1,10 @@
 #
-# $Id: fftk_ChargeOpt_ESP.tcl,v 1.1 2017/12/13 18:34:17 gumbart Exp $
+# $Id: fftk_ChargeOpt_ESP.tcl,v 1.2 2019/08/27 22:31:22 johns Exp $
 #
 #==============================================================================
 namespace eval ::ForceFieldToolKit::ChargeOpt::ESP:: {
-    variable chk
-    variable gau
+        variable chk
+        variable gau
 	variable gauLog
 	variable qmProc 1
 	variable qmMem 1
@@ -25,12 +25,115 @@ namespace eval ::ForceFieldToolKit::ChargeOpt::ESP:: {
 	variable inputName
 	variable newPsfName
 	variable espStatus	
+
+        variable qmSoft $::ForceFieldToolKit::qmSoft
+}
+#======================================================
+proc ::ForceFieldToolKit::ChargeOpt::ESP::init {} {
+
+    # localize variables
+    variable chk
+    variable gau
+
+    variable qmProc
+    variable qmMem
+    variable qmCharge
+    variable qmMult
+    variable qmRoute
+
+    variable gauLog
+
+    variable qmSoft $::ForceFieldToolKit::qmSoft
+
+    # Set Variables to Initial value
+    set chk {}
+    set gau {}
+
+    ::ForceFieldToolKit::${qmSoft}::resetDefaultsESP
+
+    set gauLog {}
+
+}
+
+#======================================================
+proc ::ForceFieldToolKit::ChargeOpt::ESP::sanityCheck {} {
+    # checks to see that appropriate information is set prior to running
+
+    # returns 1 if all input is sane
+    # returns 0 if there is a problem
+
+    # localize relevant ChargeOpt::ESP variables
+
+    variable chk
+    variable gau
+
+    variable qmProc
+    variable qmMem
+    variable qmCharge
+    variable qmMult
+    variable qmRoute
+
+    # local variables
+    set errorList {}
+    set errorText ""
+
+    # checks
+    # make sure that chk is entered and exists
+    if { $chk eq "" } {
+        lappend errorList "No CHK/OUT/PDB file was specified."
+    } else {
+        if { ![file exists $chk] } { lappend errorList "Cannot find CHK/OUT file." }
+    }
+
+    # make sure that com is enetered and exists
+    if { $gau eq "" } {
+        lappend errorList "No output path was specified."
+    } else {
+        if { ![file writable [file dirname $gau]] } { lappend errorList "Cannot write to output path." }
+    }
+
+    # validate gaussian settings (not particularly vigorous validation)
+    # qmProc (processors)
+    if { $qmProc eq "" } { lappend errorList "No processors were specified." }
+    if { $qmProc <= 0 || $qmProc != [expr int($qmProc)] } { lappend errorList "Number of processors must be a positive integer." }
+    # qmMem (memory)
+    if { $qmMem eq "" } { lappend errorList "No memory was specified." }
+    if { $qmMem <= 0 || $qmMem != [expr int($qmMem)]} { lappend errorList "Memory must be a postive integer." }
+    # qmCharge (charge)
+    if { $qmCharge eq "" } { lappend errorList "No charge was specified." }
+    if { $qmCharge != [expr int($qmCharge)] } { lappend errorList "Charge must be an integer." }
+    # qmMult (multiplicity)
+    if { $qmMult eq "" } { lappend errorList "No multiplicity was specified." }
+    if { $qmMult < 0 || $qmMult != [expr int($qmMult)] } { lappend errorList "Multiplicity must be a positive integer." }
+    # qmRoute (route card for gaussian; just make sure it isn't empty)
+    if { $qmRoute eq "" } { lappend errorList "Route card is empty." }
+
+    # if there is an error, tell the user about it
+    # return -1 to tell the calling proc that there is a problem
+    if { [llength $errorList] > 0 } {
+        foreach ele $errorList {
+            set errorText [concat $errorText\n$ele]
+        }
+        tk_messageBox \
+            -type ok \
+            -icon warning \
+            -message "Application halting due to the following errors:" \
+            -detail $errorText
+
+        # there are errors, return the error response
+        return 0
+    }
+
+    # if you've made it this far, there are no errors
+    return 1
+
 }
 #==============================================================================
 proc ::ForceFieldToolKit::ChargeOpt::ESP::calcPTE { element } {
 	# procedure to convert element symbol to pte number
 
-	variable pteNum
+	variable pteNum "Not recognized"
+	set ExitVar 0
 
 	# define ordered periodic table
 	set elementList {H He Li Be B C N O F Ne Na Mg Al Si P S   \
@@ -49,7 +152,14 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::calcPTE { element } {
 			break
 		}
 	}
-	
+
+        # Print message if file was not recognised
+	if { $pteNum eq "Not recognized" } { 	
+            tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Element name of the following atom was not recognized.\
+             Please check atom names in your input PDB/PSF files: ${element}"
+	    return $ExitVar
+        } 
+	# Return atomic number if recognized
 	return $pteNum
 }
 #==============================================================================
@@ -63,133 +173,43 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::formatRESP { num } {
 	
 	set numExp [format %E $num]
 	set Epos [string first "E" $numExp]
-	set exp [format %+.2i [expr [string range $numExp [expr $Epos + 1] end] + 1]]
+	set exp [format %+.2i [expr [ scan [string range $numExp [expr $Epos + 1] end] %d ] + 1]] ;# there was a problem with $Epos > -07; the 'scan' solves the issue
 	set base [format "% .6f" [expr [string range $numExp 0 [expr $Epos - 1]]/10.0]]
 	return "${base}E${exp}"
 }
 #==============================================================================
 proc ::ForceFieldToolKit::ChargeOpt::ESP::writeGauFile {} {
-	# writes a gaussian input file
+	# writes a QM input file
 
-	variable chk
-	variable qmProc
-	variable qmMem
-	variable qmCharge
-	variable qmMult
-	variable qmRoute
-	variable gauName
-    variable gau
+       variable chk
+       variable qmProc
+       variable qmMem
+       variable qmCharge
+       variable qmMult
+       variable qmRoute
+       variable gau
+       variable qmSoft $::ForceFieldToolKit::qmSoft
+ 
+       # sanity check
+       if { ![::ForceFieldToolKit::ChargeOpt::ESP::sanityCheck] } { return }
 
-    # make a copy of the CHK file to prevent Gaussian from overwriting the original
-    set newCHKname "[file rootname $gau].chk"
-    file copy $chk $newCHKname
-
-	set gauFile [open $gau w]
-	
-	# write the .gau file
-    puts $gauFile "%chk=[file tail $newCHKname]"   
-	puts $gauFile "%nproc=$qmProc"
-	puts $gauFile "%mem=${qmMem}GB"
-	puts $gauFile "$qmRoute"
-	puts $gauFile ""
-	puts $gauFile "<qmtool> simtype=\"ESP Calculation\" </qmtool>"
-	puts $gauFile ""
-	puts $gauFile "$qmCharge $qmMult"
-	
-	close $gauFile
+       ::ForceFieldToolKit::${qmSoft}::writeGauFile_ESP $chk $qmProc $qmMem $qmCharge $qmMult $qmRoute $gau 
 }
 #==============================================================================
 proc ::ForceFieldToolKit::ChargeOpt::ESP::writeDatFile {} {
 	# writes a data file
 
-    variable inputName
-	variable chk
+        variable inputName
 	variable gauLog
-	variable datFile
-	variable datName
-	variable gauLog
-	variable logFile
-	variable nAtoms
-	variable line
-	variable nFitCenters
-	variable formatStr
-	variable fitValue
-	variable count
-	variable auScale
-	set count 1
-	set auScale 0.52917720
+        variable qmSoft $::ForceFieldToolKit::qmSoft
+        variable espStatus
 
-	# name the file based on the inputName
-	set datName ${inputName}.dat
-	set datFile [open $datName w]
-	
-	set logFile [open $gauLog r]
-
-	# read the number of atoms
-	while { [lindex [set line [gets $logFile]] 0] ne "NAtoms=" } {
-		continue
-    }
-	set nAtoms [lindex $line 1]
-		
-	# read the number of fit centers
-	while { [lrange [set line [gets $logFile]] 1 8] ne "points will be used for fitting atomic charges" } {
-		continue
-    }
-	set nFitCenters [lindex $line 0]
-	
-	puts $datFile "   $nAtoms$nFitCenters"
-
-	# go back to the beginning of the .log file
-	seek $logFile 0
-	
-	# read the Atom Fit Centers
-	while { [lrange [set line [gets $logFile]] 0 1] ne "Atomic Center" } {
-		continue
-    }
-	set formatStr "                   %s   %s   %s"
-	set temp [format $formatStr [lindex $line 5] [lindex $line 6] [lindex $line 7]]
-	puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 5] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]]]
-	while { [lrange [set line [gets $logFile]] 0 1] eq "Atomic Center" } {
-		puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 5] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]]]
-		continue
-    }
-	
-	# go back to the beginning of the .log file
-	seek $logFile 0
-	
-	# read the fit values
-	while { [lrange [set line [gets $logFile]] 0 3] ne "Electrostatic Properties (Atomic Units)" } {
-		continue
-    }
-	while { [lindex [set line [gets $logFile]] 1] ne "Fit" } {
-		continue
-    }
-	lappend fitValue [lindex $line 2]
-	while { [lindex [set line [gets $logFile]] 1] eq "Fit" } {
-		lappend fitValue [lindex $line 2]
-		continue
-    }
-	
-	# go back to the beginning of the .log file
-	seek $logFile 0
-	
-	# write formatted fit values to the data file
-	while { [lrange [set line [gets $logFile]] 0 2] ne "ESP Fit Center" } {
-		continue
-   }
-	set formatStr "   %s   %s   %s"
-	puts -nonewline $datFile [format "   %s" [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [lindex $fitValue 0]]]
-	puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 8] / $auScale]]]
-	while { [lrange [set line [gets $logFile]] 0 2] eq "ESP Fit Center" } {
-		puts -nonewline $datFile [format "   %s" [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [lindex $fitValue $count]]]
-		puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 8] / $auScale]]]
-		incr count
-		continue
-	}	
-	
-	close $logFile
-	
-	close $datFile
+	set espStatus "Writing data for RESP..."
+	update idletasks
+	puts -nonewline "Writing data for RESP..."
+        ::ForceFieldToolKit::${qmSoft}::writeDatFile_ESP $inputName $gauLog
+	puts "Done."
+	set espStatus "IDLE"
 }
 #==============================================================================
 proc ::ForceFieldToolKit::ChargeOpt::ESP::writeInFiles {chargeGroups chargeInit restrainData restrainNum} {
@@ -210,6 +230,11 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::writeInFiles {chargeGroups chargeInit 
 	variable psfFile
 	variable pdbFile 
 	variable inputName
+        
+	variable espStatus
+        set espStatus "Writing input file..."
+        update idletasks
+        puts -nonewline "Writing input file..."
 
 	set pdbFile $::ForceFieldToolKit::Configuration::geomOptPDB
 	set moleculeID [mol new $psfFile]
@@ -266,7 +291,15 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::writeInFiles {chargeGroups chargeInit 
 	   set ind [lsearch -index 0 $atomData [$temp get name]]
 	   # in file
    	   puts -nonewline $inFile "  "
-	   puts -nonewline $inFile [::ForceFieldToolKit::ChargeOpt::ESP::calcPTE [$temp get name]]
+	   # get atomic number, but check if element is recognized 
+	   set pte [::ForceFieldToolKit::ChargeOpt::ESP::calcPTE [$temp get element]] ;# name was replaced by element
+	   if { $pte ne 0} {
+	       puts -nonewline $inFile $pte
+	   } else {
+	       close $inFile
+	       close $qinFile
+	       return
+	   }
 	   if { $ind >= 0 } {
               if { [string equal [lindex $atomData $ind 2] "Static"] } {
                  puts $inFile "   -1"
@@ -320,6 +353,8 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::writeInFiles {chargeGroups chargeInit 
 	close $qinFile
 
 	mol delete $moleculeID
+        puts "Done."
+        set espStatus "IDLE"
 }
 #==============================================================================
 # CGM Note: Writing shell files and then running them makes me nervous.  Does this require an external dependency?

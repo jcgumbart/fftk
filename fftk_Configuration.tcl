@@ -1,5 +1,5 @@
 #
-# $Id: fftk_Configuration.tcl,v 1.2 2017/03/17 19:11:10 mayne Exp $
+# $Id: fftk_Configuration.tcl,v 1.3 2019/08/27 22:31:22 johns Exp $
 #
 #==============================================================================
 # Configurations -- variables and proc for setting and querying ffTK properties
