@@ -1,5 +1,5 @@
 #
-# $Id: fftk_BondAngleOpt.tcl,v 1.19 2017/03/17 19:11:11 mayne Exp $
+# $Id: fftk_BondAngleOpt.tcl,v 1.21 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -59,6 +59,8 @@ namespace eval ::ForceFieldToolKit::BondAngleOpt {
     variable optCount
     
     variable parInProg
+
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 }
 #======================================================
 proc ::ForceFieldToolKit::BondAngleOpt::init {} {
@@ -170,9 +172,9 @@ proc ::ForceFieldToolKit::BondAngleOpt::sanityCheck {} {
     if { $pdb eq "" } { lappend errorList "No PDB file was specified." } \
     else { if { ![file exists $pdb] } { lappend errorList "Cannot find PDB file." } }
     
-    # make sure hess log file is entered and exists
-    if { $hessLog eq "" } { lappend errorList "No hessian LOG file was specified." } \
-    else { if { ![file exists $hessLog] } { lappend errorList "Cannot find hessian LOG file." } }
+    # make sure hess output file is entered and exists
+    if { $hessLog eq "" } { lappend errorList "No hessian output file was specified." } \
+    else { if { ![file exists $hessLog] } { lappend errorList "Cannot find hessian output file." } }
     
     # make sure in-progress par file is entered and exists
     if { $parInProg eq "" } { lappend errorList "No in-progress PAR file was specified." } \
@@ -192,9 +194,9 @@ proc ::ForceFieldToolKit::BondAngleOpt::sanityCheck {} {
         lappend errorList "NAMD binary file (or command if in PATH) was not specified."
     } else { if { [::ExecTool::find $namdbin] eq "" } { lappend errorList "Cannot find NAMD binary file." } }
     
-    # make sure that output log name is not empty and directory is writable
-    if { $outFileName eq "" } { lappend errorList "Output LOF file was not specified." } \
-    else { if { ![file writable [file dirname $outFileName]] } { lappend errorList "Cannot write to output LOG file directory." } }
+    # make sure that output output name is not empty and directory is writable
+    if { $outFileName eq "" } { lappend errorList "Output output file was not specified." } \
+    else { if { ![file writable [file dirname $outFileName]] } { lappend errorList "Cannot write to output file directory." } }
     
     
     # Parameters to Optimize
@@ -342,8 +344,11 @@ proc ::ForceFieldToolKit::BondAngleOpt::optimize {} {
         # run a sanity check
         if { ![::ForceFieldToolKit::BondAngleOpt::sanityCheck] } { return }
     }
+
+    # make sure qmSoft variable is set to the right value for the selected output file
+    if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $hessLog]} {return}
     
-    # open the log file
+    # open the output file
     set outFile [open $outFileName w]
     
     # if in debugging mode, open debugging output file
@@ -354,19 +359,13 @@ proc ::ForceFieldToolKit::BondAngleOpt::optimize {} {
         ::ForceFieldToolKit::BondAngleOpt::printSettings stdout; flush stdout
         ::ForceFieldToolKit::BondAngleOpt::printSettings $debugLog; flush $debugLog
     }
-    
 
-    # load the Gaussian Log files from the hessian calculation
-    if { $debug } { puts -nonewline $debugLog "loading hessian log file..."; flush $debugLog }
-    set hessLogID [mol new $psf]
-    # reTypeFromPSF has been depreciated
-    #::ForceFieldToolKit::SharedFcns::reTypeFromPSF $psf $hessLogID 
-    ::QMtool::use_vmd_molecule $hessLogID
-    ::QMtool::load_gaussian_log $hessLog $hessLogID
-    if { $debug } { puts $debugLog "DONE"; flush $debugLog }
+    set hessLogID [mol new $psf] ; mol addfile $pdb
+    set zmatqm [::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::zmatqm_BondAngleOpt $debug $debugLog $hessLogID $hessLog ]
+#    set tmpVar [::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::zmatqm_BondAngleOpt $debug $debugLog $psf $hessLog ]
+#    set zmatqm [lindex $tmpVar 0]
+#    set hessLogID [lindex $tmpVar 1]
     
-    # store internal coordinates from the hessian calculation
-    set zmatqm [::QMtool::get_internal_coordinates]
     if { $debug } {
         puts $debugLog "zmatqm:"
         foreach ele $zmatqm { puts $debugLog "  $ele" }
@@ -607,6 +606,9 @@ proc ::ForceFieldToolKit::BondAngleOpt::optimize {} {
     $opt configure -bounds $baBounds
     $opt initsimplex $baInitial $scale
 
+    # start counter
+    set optCount 1
+
     if { $debug } {
         puts $debugLog "DONE"
         if { $mode eq "downhill" } {
@@ -707,6 +709,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::optBondsAngles { baInput } {
     variable guiMode
     variable optCount
 
+    variable dhIter
     #-------------------------------------------------------
     
     if { $debug } {
@@ -768,13 +771,9 @@ proc ::ForceFieldToolKit::BondAngleOpt::optBondsAngles { baInput } {
 #    foreach ele $baIndList {
 #        lappend targetlist [lindex $ele 2 2]
 #    }
-###   puts "baIndlist $baIndList\n"
-###   puts "mmEnList: $mmEnList\n"
-    
 
     set i 0
     foreach entry $baIndList mmEn $mmEnList {
-######        puts "mmEn: [lindex $mmEn 0]  qmEn?: [lindex $entry 2 2 0] "        
         set baCur [lindex $entry 0]
         if { [llength $baCur] == 2 } {
             set baCurVal [measure bond "[lindex $baCur 0] [lindex $baCur 1]" last]
@@ -810,9 +809,14 @@ proc ::ForceFieldToolKit::BondAngleOpt::optBondsAngles { baInput } {
 
     # update the status in the gui
     if { $guiMode } {
-        incr optCount
-        set ::ForceFieldToolKit::gui::baoptStatus "Running...Optimizing(iter:$optCount)"
-        update idletasks
+        if { $optCount } {
+          set ::ForceFieldToolKit::gui::baoptStatus "Running...Optimizing(iter:$optCount)"
+          update idletasks
+          incr optCount
+        } else {
+          set ::ForceFieldToolKit::gui::baoptStatus "Initializing..."
+          update idletasks
+        }
     }
 
     return $totalObj
@@ -1019,6 +1023,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::printSettings { outfile } {
 #======================================================
 ## original was compute_force_constants_from_inthessian in paratool
 proc ::ForceFieldToolKit::BondAngleOpt::computePESqm { molid { BAonly 1} } {
+
    variable zmatqm
 
    variable EnList {}
@@ -1032,8 +1037,18 @@ proc ::ForceFieldToolKit::BondAngleOpt::computePESqm { molid { BAonly 1} } {
    variable dxAng
    variable dxBond
 
-   set inthessian_kcal [::QMtool::get_internal_hessian_kcal]
-   set zmatqm [::QMtool::get_internal_coordinates]
+   # need variables for ORCA procs
+   variable hessLog
+   variable debug
+   variable debugLog
+   set psf $::ForceFieldToolKit::Configuration::chargeOptPSF
+   variable qmSoft $::ForceFieldToolKit::qmSoft
+   
+   set inthessian_kcal [ ::ForceFieldToolKit::${qmSoft}::get_inthessian_kcal_BondAngleOpt $molid $hessLog ]
+   set zmatqm [::ForceFieldToolKit::${qmSoft}::zmatqm_BondAngleOpt $debug $debugLog $molid $hessLog ]
+   #set tmpVar [::ForceFieldToolKit::${qmSoft}::zmatqm_BondAngleOpt $debug $debugLog $psf $hessLog ]
+   #set zmatqm [lindex $tmpVar 0]
+   #set hessLogID [lindex $tmpVar 1]
    
    for {set i 1} {$i<[llength $zmatqm]} {incr i} {
       #set targetk  [lindex $zmat $i 4 0]
@@ -1091,8 +1106,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::computePESqm { molid { BAonly 1} } {
       set energy {0 0 0}
 ###      #set h1 $dx
 ###      if {[regexp "angle|lbend|dihed|imprp" $type]} {
-###         puts "huh??? $h1"
-###	 set h1 [expr {$deg2rad*$h1}]
+###	     set h1 [expr {$deg2rad*$h1}]
 ###      }
 
       for {set j 1} {$j<[llength $zmatqm]} {incr j} {
@@ -1241,7 +1255,6 @@ proc ::ForceFieldToolKit::BondAngleOpt::computePESqm { molid { BAonly 1} } {
    }
 
    # energies for each int coord. distortion to be fitted
-
    set zmatqmEff [assign_fc_zmat $targetklist $molid $zmatqm $BAonly]
    return [list $zmatqmEff $EnList $targetx0list]
 
@@ -1286,6 +1299,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::computePESmm { molid baIndList namdEn { 
    set sel [atomselect $molid all]
    set energyout [eval $namdEn]
    set minEn [lindex $energyout $minFrame end]
+   $sel delete
 
 ###   animate write dcd mm-all.dcd beg $minFrame $molid
 
@@ -1318,7 +1332,6 @@ proc ::ForceFieldToolKit::BondAngleOpt::assign_fc_zmat { fclist molid zmatIn BAo
       if {$num==-1} { incr num; continue }
       set fc [lindex $fclist $num]
       set type [lindex $entry 1]
-
       if {[string match "dihed" $type] && !$BAonly} {
 	 set delta 180.0
 	 set n [::QMtool::get_dihed_periodicity $entry $molid]
@@ -1561,8 +1574,6 @@ proc ::ForceFieldToolKit::BondAngleOpt::make_distortion {molid type arrpos arrat
    $sel2 frame [expr {$last+1}];
 
    if {[string match "*bond" $type]} {
-      # FIXME: Should have a bondring type in which we correct for the change of 
-      # neighboring bonds
       set bondvec [vecsub $pos(0) $pos(1)]
       set dir     [vecnorm $bondvec]
 
@@ -1578,14 +1589,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::make_distortion {molid type arrpos arrat
       set x       [veclength $bondvec]
 
    } elseif {[regexp "bondring" $type]} {
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
-      puts "DO WE EVER MATCH THIS?  BONDRING"
+      #puts "DO WE EVER MATCH THIS?  BONDRING"
       set bondvec [vecsub $pos(0) $pos(1)]
       set dir     [vecnorm $bondvec]
 
@@ -1617,15 +1621,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::make_distortion {molid type arrpos arrat
       set x  [veclength $bondvec]
       set del [expr {($xupper-$x)/2.0}]
    } elseif {[regexp "anglering" $type]} {
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
-      puts "DO WE EVER MATCH THIS?  ANGLERING"
+      #puts "DO WE EVER MATCH THIS?  ANGLERING"
       set x  [angle_from_coords $pos(0) $pos(1) $pos(2)]
 
       set deg2rad 0.0174532925199;

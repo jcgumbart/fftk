@@ -1,5 +1,5 @@
 #
-# $Id: fftk_guiProcs.tcl,v 1.47 2017/12/13 18:34:17 gumbart Exp $
+# $Id: fftk_guiProcs.tcl,v 1.48 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -34,9 +34,11 @@ proc ::ForceFieldToolKit::gui::init {} {
 
     # ChargeOpt Tab Setup
     set ::ForceFieldToolKit::gui::coptMethod "Water Interaction"
+#    set ::ForceFieldToolKit::ChargeOpt::qmSoft "Gaussian"
 
     # GenZMatrix Tab Setup
     # Initialize GenZMatrix namespace
+#    set ::ForceFieldToolKit::GenZMatrix::qmSoft "Gaussian"
     ::ForceFieldToolKit::GenZMatrix::init
     # Initialize GenZMatrix GUI settings
     set ::ForceFieldToolKit::gui::gzmAtomLabels {}
@@ -64,12 +66,15 @@ proc ::ForceFieldToolKit::gui::init {} {
     ::ForceFieldToolKit::gui::coptClearEditData "wie"
     ::ForceFieldToolKit::gui::coptClearEditData "results"
 
+    # RESP Tab Setup
+    # Initialize GeomOpt namespace
+    ::ForceFieldToolKit::ChargeOpt::ESP::init
     # RESP Settings
     set ::ForceFieldToolKit::gui::espEditGroup     {}
     set ::ForceFieldToolKit::gui::espEditInit      {}
     set ::ForceFieldToolKit::gui::espEditRestraint {}
     set ::ForceFieldToolKit::gui::espEditRestNum   {}
-
+#    set ::ForceFieldToolKit::gui::qmSoft "Gaussian"
 
     # GenBonded Tab Setup
     # Initialize GenBonded Namespace
@@ -1214,6 +1219,9 @@ proc ::ForceFieldToolKit::gui::gzmToggleSpheres {} {
 proc ::ForceFieldToolKit::gui::gzmAutoDetect {} {
     # very simple method to autodetecting donors and acceptors
 
+    # NEW 02/01/2019: Check element is defined
+    ::ForceFieldToolKit::SharedFcns::checkElementPDB
+
     # add all hydrogens
     set selHydrogens [atomselect top "element H"]
     set ::ForceFieldToolKit::GenZMatrix::donList [$selHydrogens get index]
@@ -1995,22 +2003,6 @@ proc ::ForceFieldToolKit::gui::espGuessChargeGroups {} {
     return [list $cgNames $cgInit]
 }
 #======================================================
-proc ::ForceFieldToolKit::gui::resetInputDefaultsESP {} {
-    # resets the Input File Settings to default values
-    set ::ForceFieldToolKit::ChargeOpt::ESP::ihfree 1
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qwt 0.0005
-    set ::ForceFieldToolKit::ChargeOpt::ESP::iqopt 2       
-}
-#======================================================
-proc ::ForceFieldToolKit::gui::resetGaussianDefaultsESP {} {
-    # resets the Gaussian Settings to default values
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmProc 1
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmMem 1
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmCharge 0
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmMult 1
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute "#P HF/6-31G* SCF=Tight Geom=Checkpoint Pop=MK IOp(6/33=2,6/41=10,6/42=17)"   
-}
-#======================================================
 
 #------------------------------------------------------
 # BondAngleOpt Specific
@@ -2027,6 +2019,7 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
     # set local variables for required input files
     #set psf $::ForceFieldToolKit::BondAngleOpt::psf
     set psf $::ForceFieldToolKit::Configuration::chargeOptPSF
+    set pdb $::ForceFieldToolKit::Configuration::geomOptPDB
     set hessLog $::ForceFieldToolKit::BondAngleOpt::hessLog
     set parInProg $::ForceFieldToolKit::BondAngleOpt::parInProg
 
@@ -2038,10 +2031,13 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
         lappend errorList "Cannot find PSF file."
     }
     if { $hessLog eq "" } {
-        lappend errorList "No hessian LOG file was specified."
+        lappend errorList "No hessian output file was specified."
     } elseif { ![file exists $hessLog] } {
-        lappend errorList "Cannot find hessian LOG file."
+        lappend errorList "Cannot find hessian output file."
     }
+    # make sure qmSoft variable is set to the right value for the selected output file
+    if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $hessLog]} {return}
+
     if { $parInProg eq "" } {
         lappend errorList "No in-progress PAR file was specified."
     } elseif { ![file exists $parInProg] } {
@@ -2062,7 +2058,7 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
     }
 
     # load the hessian into a molecular area
-    set hessLogID [mol new $psf]
+    set hessLogID [mol new $psf] ; mol addfile $pdb
     # reTypeFromPSF/reChargeFromPSF has been depreciated
     # ::ForceFieldToolKit::SharedFcns::reTypeFromPSF $psf $hessLogID
     ::QMtool::use_vmd_molecule $hessLogID
@@ -2074,10 +2070,11 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
 
     # calculate the effective QM PES and eq geometry for all internal coords
     lassign [::ForceFieldToolKit::BondAngleOpt::computePESqm $hessLogID] zmatqmEff trashCollector
-
     # average replicates from guessZmatqmEff
     set replicateAvgZmat [::ForceFieldToolKit::SharedFcns::avgZmatReplicates $hessLogID $zmatqmEff]
 
+puts "replicateAvgZmat"
+puts $replicateAvgZmat
     # process bonds/angles and crosscheck the averaged zmat against the in-progress file
 
     # clear out the tv box
@@ -2085,7 +2082,10 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
 
     # read in the in-prog parameters
     lassign [::ForceFieldToolKit::SharedFcns::readParFile $parInProg] bondPars anglePars trashCollector
-
+puts "bondPars"
+puts $bondPars
+puts "anglePars"
+puts $anglePars
     # bonds
     foreach bond [lsearch -index 0 -inline -all $replicateAvgZmat "bond"] {
         lassign $bond indDef typeDef fc eq trashCollector

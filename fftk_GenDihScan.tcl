@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenDihScan.tcl,v 1.13 2017/08/04 18:28:59 gumbart Exp $
+# $Id: fftk_GenDihScan.tcl,v 1.14 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -14,6 +14,7 @@ namespace eval ::ForceFieldToolKit::GenDihScan {
     variable qmMult
     variable qmRoute
     variable dihData
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 }
 #======================================================
 proc ::ForceFieldToolKit::GenDihScan::init {} {
@@ -28,20 +29,15 @@ proc ::ForceFieldToolKit::GenDihScan::init {} {
     variable qmMem
     variable qmMult
     variable qmRoute
-
     variable dihData
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # set variables
     set psf {}
     set pdb {}
     set outPath {}
     set basename {}
-    ::ForceFieldToolKit::GenDihScan::resetGaussianDefaults
-    #set qmProc 1
-    #set qmCharge 0
-    #set qmMem 1
-    #set qmMult 1
-    #set qmRoute "# opt=modredundant MP2/6-31g(d)"
+    ::ForceFieldToolKit::${qmSoft}::resetDefaultsGenDihScan
 
     set dihData {}
 }
@@ -164,115 +160,34 @@ proc ::ForceFieldToolKit::GenDihScan::buildGaussianFiles {} {
     variable qmMem
     variable qmMult
     variable qmRoute
-
     variable dihData
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # run an input sanity check
     if { ![::ForceFieldToolKit::GenDihScan::sanityCheck] } { return }
 
-    # assign Gaussian atom names and gather x,y,z for output com file
-    mol new $psf; mol addfile $pdb
-    set Gnames {}
-    set atom_info {}
-    for {set i 0} {$i < [molinfo top get numatoms]} {incr i} {
-        set temp [atomselect top "index $i"]
-        lappend atom_info [list [$temp get element][expr $i+1] [$temp get x] [$temp get y] [$temp get z]]
-        lappend Gnames [$temp get element][expr $i+1]
-        $temp delete
-    }
 
-    # cycle through each dihedral to scan
-    set scanCount 1
-    foreach dih $dihData {
-        # change 0-based indices to 1-based
-        set zeroInds [lindex $dih 0]
-        set oneInds {}
-        foreach ind $zeroInds {
-            lappend oneInds [expr {$ind + 1}]
-        }
-
-        # negative scan
-        # open the output file
-        set outfile [open ${outPath}/${basename}.scan${scanCount}.neg.gau w]
-
-        # write the header
-        puts $outfile "%chk=${basename}.scan${scanCount}.neg.chk"
-        puts $outfile "%nproc=$qmProc"
-        puts $outfile "%mem=${qmMem}GB"
-        puts $outfile "$qmRoute"
-        puts $outfile ""
-        puts $outfile "$basename Dihedral Scan at MP2/6-31G*"
-        puts $outfile ""
-        puts $outfile "$qmCharge $qmMult"
-        # write coords
-       foreach atom_entry $atom_info {
-           puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
-       }
-       # write scan
-       puts $outfile ""
-       puts $outfile "D $oneInds S [expr int([expr [lindex $dih 1]/[lindex $dih 2]])] [format "%.6f" [expr {-1*[lindex $dih 2]}]]"
-
-       close $outfile
-
-       # positive scan
-        # open the output file
-        set outfile [open ${outPath}/${basename}.scan${scanCount}.pos.gau w]
-
-        # write the header
-        puts $outfile "%chk=${basename}.scan${scanCount}.pos.chk"
-        puts $outfile "%nproc=$qmProc"
-        puts $outfile "%mem=${qmMem}GB"
-        puts $outfile "$qmRoute"
-        puts $outfile ""
-        puts $outfile "$basename Dihedral Scan at MP2/6-31G*"
-        puts $outfile ""
-        puts $outfile "$qmCharge $qmMult"
-        # write coords
-       foreach atom_entry $atom_info {
-           puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
-       }
-       # write scan
-       puts $outfile ""
-       puts $outfile "D $oneInds S [expr int([expr [lindex $dih 1]/[lindex $dih 2]])] [format "%.6f" [lindex $dih 2]]"
-
-       close $outfile
-
-       incr scanCount
-
-    }
+    ::ForceFieldToolKit::${qmSoft}::buildFiles_GenDihScan $dihData $outPath $basename $qmProc $qmCharge $qmMem $qmMult $qmRoute $psf $pdb 
 
     # clean up
     mol delete top
 }
 #======================================================
-proc ::ForceFieldToolKit::GenDihScan::resetGaussianDefaults {} {
-    # resets gaussian settings to the default values
 
-    # localize variables
-    variable qmProc
-    variable qmCharge
-    variable qmMem
-    variable qmMult
-    variable qmRoute
-
-    # set variables
-    set qmProc 1
-    set qmCharge 0
-    set qmMem 1
-    set qmMult 1
-    set qmRoute "# opt=modredundant MP2/6-31g(d) Geom=PrintInputOrient"
-}
 #======================================================
 # TORSION EXPLORER
 #======================================================
 namespace eval ::ForceFieldToolKit::GenDihScan::TorExplor {
     # namespace variables
+    
+    # QM software used. Inherit variable from ::ForceFieldToolKit::GenDihScan namespace
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # GUI-related
     variable w
     variable psfType { {{PSF Files} {.psf}} {{All Files} *} }
     variable pdbType { {{PDB Files} {.pdb}} {{All Files} *} }
-    variable logType { {{LOG Files} {.log}} {{All Files} *} }
+    variable logType { {{Output Files} {.log .out}} {{All Files} *} }
 
     # Input-related
     foreach ele {psf pdb logs} { variable $ele "" }
@@ -313,6 +228,9 @@ namespace eval ::ForceFieldToolKit::GenDihScan::TorExplor {
 }
 #======================================================
 proc ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI {} {
+
+    # QM software used. Inherit variable from ::ForceFieldToolKit::GenDihScan namespace
+    variable qmSoft $::ForceFieldToolKit::GenDihScan::qmSoft
 
     # style setup
     set vbuttonPadX 5; # vertically aligned std buttons
@@ -435,7 +353,7 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI {} {
 
     ttk::frame  $w.hlf.inp.logbuttons
     ttk::button $w.hlf.inp.logbuttons.add -text "Add" -command {
-        set tempfiles [tk_getOpenFile -title "Select Gaussian Dihedral Scan LOG File(s)" -multiple 1 -filetypes $::ForceFieldToolKit::GenDihScan::TorExplor::logType]
+        set tempfiles [tk_getOpenFile -title "Select QM Dihedral Scan Output File(s)" -multiple 1 -filetypes $::ForceFieldToolKit::GenDihScan::TorExplor::logType]
         foreach tempfile $tempfiles {
             if {![string eq $tempfile ""]} { .torexplor.hlf.inp.logtv insert {} end -values [list [file tail $tempfile] $tempfile] }
         }
@@ -703,7 +621,10 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI {} {
 }
 #======================================================
 proc ::ForceFieldToolKit::GenDihScan::TorExplor::setup {logList} {
-    # read log files, load scan frames, construct plot
+    # read output files, load scan frames, construct plot
+
+    # QM software used
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # localize some things
     foreach ele {psf pdb molid colorList colorIdMap colorInd plothandle plotMax plotData plotAutoscaling scanIndsArr repNameScanInds} {variable $ele}
@@ -713,7 +634,12 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::setup {logList} {
     if { $psf eq "" || ![file exists $psf] } {tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PSF file"; return}
     if { $pdb eq "" || ![file exists $pdb] } {tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PDB file"; return}
     foreach l $logList {
-        if { $l eq "" || ![file exists $l] } {tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find LOG file"; return}
+        if { $l eq "" || ![file exists $l] } {tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find output file"; return}
+    }
+
+    # make sure qmSoft variable is set to the right value for the output file 
+    foreach l $logList {
+        if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $l]} {return}
     }
 
     # reset gui and vmd where necessary
@@ -858,7 +784,7 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::setup {logList} {
 }
 #======================================================
 proc ::ForceFieldToolKit::GenDihScan::TorExplor::readLog {log} {
-    # reads data from Gaussian log
+    # reads data from QM output
     # input: log file
     # returns:
     #   {
@@ -867,62 +793,13 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::readLog {log} {
     #    {step coordinates}
     #   }
 
+    # QM software used
+    variable qmSoft $::ForceFieldToolKit::qmSoft
+
     # initialize some variables
     set indDef {}; set stepEn {}; set stepCoords {}
-
-    # open the log file for reading
-    set infile [open $log r]
-    while { ![eof $infile] } {
-        # read a line at a time
-        set inline [string trim [gets $infile]]
-
-        switch -regexp $inline {
-            {Initial Parameters} {
-                # keep reading until finding the dihedral being scanned
-                # and parse out 1-based indices, convert to 0-based
-                while { ![regexp {^\!.*D\(([0-9]+),([0-9]+),([0-9]+),([0-9]+)\).*Scan[ \t]+\!$} [string trim [gets $infile]] full_match ind1 ind2 ind3 ind4] && ![eof $infile] } { continue }
-                if { [eof $infile] } { return }
-                foreach ele [list $ind1 $ind2 $ind3 $ind4] { lappend indDef [expr {$ele - 1}] }
-            }
-
-            {Input orientation:} {
-                # clear any existing coordinates
-                set currCoords {}
-                # burn the header
-                for {set i 0} {$i<=3} {incr i} { gets $infile }
-                # parse coordinates
-                while { [string range [string trimleft [set line [gets $infile]] ] 0 0] ne "-" } { lappend currCoords [lrange $line 3 5] }
-            }
-
-            {SCF[ \t]*Done:} {
-                # parse E(RHF) energy; convert hartrees to kcal/mol
-                set currEnergy [expr {[lindex $inline 4] * 627.5095}]
-                # NOTE: this value will be overridden if E(MP2) is also found
-            }
-
-            {E2.*EUMP2} {
-                # convert from Gaussian notation in hartrees to scientific notation
-                set currEnergy [expr {[join [split [lindex [string trim $inline] end] D] E] * 627.5095}]
-                # NOTE: this overrides the E(RHF) parse from above
-            }
-
-            {Optimization completed} {
-                # we've reached the optimized conformation
-                lappend stepEn $currEnergy
-                lappend stepCoords $currCoords
-            }
-
-            default {continue}
-        }
-    }
-
-    close $infile
-
-    # reverse data if it's a negative scan
-    if { [regexp {\.neg\.} $log] } {
-        set stepEn [lreverse $stepEn]
-        set stepCoords [lreverse $stepCoords]
-    }
+       
+    lassign [ ::ForceFieldToolKit::${qmSoft}::readLog_TorExplor $log ] indDef stepEn stepCoords
 
     # return the parsed data
     return [list $indDef $stepEn $stepCoords]

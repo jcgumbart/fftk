@@ -1,5 +1,5 @@
 #
-# $Id: fftk_DihOpt.tcl,v 1.22 2017/08/04 18:28:59 gumbart Exp $
+# $Id: fftk_DihOpt.tcl,v 1.23 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -15,6 +15,7 @@ namespace eval ::ForceFieldToolKit::DihOpt {
     variable MMdata
     variable outFile
     variable outFileName
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     variable EnQM
     variable EnMM
@@ -225,17 +226,17 @@ proc ::ForceFieldToolKit::DihOpt::sanityCheck { procType } {
             } else { if { [::ExecTool::find $namdbin] eq "" } { lappend errorList "Cannot find NAMD binary file." } }
 
             # make sure that outFileName is set and user can write to output dir
-            if { $outFileName eq "" } { lappend errorList "Output LOG file was not specified." } \
-            else { if { ![file writable [file dirname $outFileName]] } { lappend errorList "Cannot write to output LOG directory." } }
+            if { $outFileName eq "" } { lappend errorList "Output file was not specified." } \
+            else { if { ![file writable [file dirname $outFileName]] } { lappend errorList "Cannot write to output directory." } }
 
             # ----------------
             #  QM TARGET DATA
             # ----------------
-            # check log files
-            if { [llength $GlogFiles] == 0 } { lappend errorList "No Gaussian log files specified." } \
+            # check output files
+            if { [llength $GlogFiles] == 0 } { lappend errorList "No output files specified." } \
             else {
                 foreach log $GlogFiles {
-                    if { ![file exists $log] } { lappend errorList "Cannot find log file: $log." }
+                    if { ![file exists $log] } { lappend errorList "Cannot find output file: $log." }
                 }
             }
 
@@ -466,8 +467,10 @@ proc ::ForceFieldToolKit::DihOpt::optimize {} {
     # -------
     # QM DATA
     # -------
-    # parse Gaussian log files (QMdata)
-    set QMdata [::ForceFieldToolKit::DihOpt::parseGlog $GlogFiles]
+    # parse output files (QMdata)
+    set debugLog ""
+puts $debugLog
+    set QMdata [::ForceFieldToolKit::DihOpt::parseGlog $GlogFiles $debug $debugLog $guiMode ]
     # in the form: {  {dih indicies (0-based)} currDihVal QME {xyz coords} ...  }
     puts $outFile "QM data read from:"
     foreach log $GlogFiles {
@@ -1194,8 +1197,8 @@ proc ::ForceFieldToolKit::DihOpt::optDih { kDihs } {
     return $Obj
 }
 #======================================================
-proc ::ForceFieldToolKit::DihOpt::parseGlog { inputFiles } {
-    # reads through all passed Gaussian log files
+proc ::ForceFieldToolKit::DihOpt::parseGlog { inputFiles { debug 0 } { debugLog "" } { guiMode 0} } {
+    # reads through all passed log files
     # parses out:
     #   0. indices for scanned dih (converted to 0-based indices)
     #   1. energy at current conformation (converted to kcal/mol)
@@ -1207,12 +1210,14 @@ proc ::ForceFieldToolKit::DihOpt::parseGlog { inputFiles } {
     #   ...
     # }
 
-    # inputFiles = Gaussian log files
+    # inputFiles = QM output files
+    # QM Software variable
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # localize forcefieldtoolkit debugging variables
-    variable debug
-    variable debugLog
-    variable guiMode
+    # variable debug
+    # variable debugLog
+    # variable guiMode
 
     # init proc-wide variables
     set GlogData {}
@@ -1220,13 +1225,18 @@ proc ::ForceFieldToolKit::DihOpt::parseGlog { inputFiles } {
 
     if { $debug } {
         puts $debugLog "\n==========================================="
-        puts $debugLog "       Parsing Gaussian Log Data"
-        puts $debugLog "         $logCount log file(s) to read..."
+        puts $debugLog "       Parsing QM output Data"
+        puts $debugLog "         $logCount output file(s) to read..."
         puts $debugLog "==========================================="
         flush $debugLog
     }
 
     foreach GlogFile $inputFiles {
+
+         # make sure qmSoft variable is set to the right value for the selected output file
+         if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $GlogFile]} {return}
+
+        ####################################################################################
 
         # if running from the GUI, update the status
         if { $guiMode } {
@@ -1235,100 +1245,14 @@ proc ::ForceFieldToolKit::DihOpt::parseGlog { inputFiles } {
         }
 
         if { $debug } {
-            puts $debugLog "\nParsing Gaussian LOG file ($currLogNum of ${logCount}): $GlogFile"
+            puts $debugLog "\nParsing QM output file ($currLogNum of ${logCount}): $GlogFile"
             flush $debugLog
         }
 
-        # initialize log-wide variables
-        set currDihDef {}; set currDihVal {}; set currCoords {}; set currEnergy {}
-        set infile [open $GlogFile r]
-        set tempGlogData {}
+        set tempGlogData [ ::ForceFieldToolKit::${qmSoft}::parseGlog_DihOpt $debug $debugLog $GlogFile ] 
 
-        # read through Gaussian Log File (Glog)
-        while {[eof $infile] != 1} {
-            # read a line in
-            set inline [gets $infile]
-            # parse line
-            switch -regexp $inline {
-                {Initial Parameters} {
-                    # keep reading until finding the dihedral being scanned
-                    while { [lindex [set inline [gets $infile]] 4] ne "Scan" } {
-                        continue
-                    }
-                    # parse out the dihedral definition (1-based indices)
-                    set scanDihDef [lindex $inline 2]
-                    # strip out four indices from D(#1,#2,#3,#4)
-                    set scanDihInds {}
-                    foreach ind [split [string range $scanDihDef 2 [expr [string length $scanDihDef] - 2]] ","] {
-                       lappend scanDihInds [expr $ind - 1]
-                    }
+        foreach ele $tempGlogData { lappend GlogData $ele }
 
-                    if { $debug } {
-                        puts $debugLog "Scan dihedral FOUND:"
-                        puts $debugLog "\tGaussian Indicies: $scanDihDef"
-                        puts $debugLog "\t0-based Indicies (VMD): $scanDihInds"
-                        puts $debugLog "--------------------------------------"
-                        puts $debugLog "Ind (VMD)\tCurrDih\tEnergy (kcal/mol)"
-                        puts $debugLog "--------------------------------------"
-                        flush $debugLog
-                    }
-                }
-
-                {Input orientation:} {
-                    # clear any existing coordinates
-                    set currCoords {}
-                    # burn the header
-                    for {set i 0} {$i<=3} {incr i} {
-                        gets $infile
-                    }
-                    # parse coordinates
-                    while { [string range [string trimleft [set line [gets $infile]] ] 0 0] ne "-" } {
-                        lappend currCoords [lrange $line 3 5]
-                    }
-                }
-
-                {SCF[ \t]*Done:} {
-                    # parse E(RHF) energy; convert hartrees to kcal/mol
-                    set currEnergy [expr {[lindex $inline 4] * 627.5095}]
-                    # NOTE: this value will be overridden if E(MP2) is also found
-                }
-
-                {E2.*EUMP2} {
-                    # convert from Gaussian notation in hartrees to scientific notation
-                    set currEnergy [expr {[join [split [lindex [string trim $inline] end] D] E] * 627.5095}]
-                    # NOTE: this overrides the E(RHF) parse from above
-                }
-
-                {Optimization completed} {
-                    # we've reached an optimized conformation
-                    # keep reading until finding the scanned dihedral
-                    while { [lindex [set inline [gets $infile]] 2] ne $scanDihDef } {
-                        continue
-                    }
-                    # parse out the current dihedral value; round to integer
-                    set currDihVal [expr { round([lindex $inline 3]) }]
-                    # add the collected information to the master list
-                    # lappend GlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
-                    lappend tempGlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
-
-                    if { $debug } {
-                        puts $debugLog "$scanDihInds\t$currDihVal\t$currEnergy"
-                        flush $debugLog
-                    }
-                }
-            }; # end of line parse (switch)
-        }; # end of cycling through Glog lines (while)
-
-        # if the Gaussian log file runs the scan in negative direction, reverse the order of entries
-        # if not explicitely in the negative direction, preserve the order of entries
-        if { [lsearch -exact [split $GlogFile \.] "neg"] != -1 } {
-            foreach ele [lreverse $tempGlogData] { lappend GlogData $ele }
-        } else {
-            foreach ele $tempGlogData { lappend GlogData $ele }
-        }
-
-        # clean up
-        close $infile
         incr currLogNum
 
     }; # done Glog file (foreach)
@@ -1432,8 +1356,8 @@ proc ::ForceFieldToolKit::DihOpt::vmdLoadQMData { psfFile pdbFile GlogData } {
         # of atoms in the GlogData
         set atomCount [molinfo top get numatoms]
         if { [llength [lindex $optStruct 3]] != $atomCount } {
-            if { $debug } {puts $debugLog "ERROR: number of atoms in template PDB file does not match Gaussian log coordinate set"; flush $debugLog }
-            error "ERROR: number of atoms in template PDB file does not match Gaussian log coordinate set"
+            if { $debug } {puts $debugLog "ERROR: number of atoms in template PDB file does not match QM output coordinate set"; flush $debugLog }
+            error "ERROR: number of atoms in template PDB file does not match QM output coordinate set"
         }
 
         # move each atom to GlodData coordinates
@@ -1842,7 +1766,7 @@ proc ::ForceFieldToolKit::DihOpt::printSettings { printFile } {
     puts $printFile "output LOG: $::ForceFieldToolKit::DihOpt::outFileName"
 
     # QM Target Data
-    puts $printFile "Gaussian Log Files:"
+    puts $printFile "QM output Files:"
     foreach lfile $::ForceFieldToolKit::DihOpt::GlogFiles {
         puts $printFile "\t$lfile"
     }

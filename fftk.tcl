@@ -1,5 +1,5 @@
 #
-# $Id: fftk.tcl,v 1.13 2017/12/13 18:34:16 gumbart Exp $
+# $Id: fftk.tcl,v 1.14 2019/08/27 22:31:22 johns Exp $
 #
 #==============================================================================
 # Force Field ToolKit (ffTk) and GUI
@@ -46,13 +46,17 @@ package require namdenergy
 package require psfgen
 package require utilities
 
-#======================================================
+#============================================================================
 namespace eval ::ForceFieldToolKit:: {
-    
+	# Define a QM variable variable identifying the QM package used
+	# By default it is Gaussian
+	variable qmSoft "Gaussian"
 }
-#======================================================
+#============================================================================
 
 # source code base
+source [file join $env(FFTKDIR) fftk_QMGaussian.tcl]
+source [file join $env(FFTKDIR) fftk_QMORCA.tcl]
 source [file join $env(FFTKDIR) fftk_BuildPar.tcl]
 source [file join $env(FFTKDIR) fftk_Configuration.tcl]
 source [file join $env(FFTKDIR) fftk_GeomOpt.tcl]

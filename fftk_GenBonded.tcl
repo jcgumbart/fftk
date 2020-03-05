@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenBonded.tcl,v 1.18 2017/03/17 19:11:11 mayne Exp $
+# $Id: fftk_GenBonded.tcl,v 1.20 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -11,8 +11,9 @@ namespace eval ::ForceFieldToolKit::GenBonded:: {
     variable qmProc
     variable qmMem
     variable qmRoute
+    variable qmSoft $::ForceFieldToolKit::qmSoft
     
-    # declare variables for extracting PARs from Gaussian log
+    # declare variables for extracting PARs from QM log
     #variable psf ; # removed to use the multi-use variable chargeOptPSF
     #variable pdb ; # removed to use the multi-use variable geomOptPDB
     variable templateParFile
@@ -26,13 +27,12 @@ namespace eval ::ForceFieldToolKit::GenBonded:: {
 proc ::ForceFieldToolKit::GenBonded::init {} {
     # initializes GUI-related variables/settings for Calc. Bonded. Tab
 
-    # localize + initialize variables for generating Gaussian input file
+    # localize + initialize variables for generating QM input file
     variable geomCHK {}
-    variable com "hess.gau"
     # run proc to set qmProc, qmMem, and qmRoute to defaults
-    ::ForceFieldToolKit::GenBonded::resetGaussianDefaults
+    ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenBonded
 
-    # localize + initialize variables for extracting PARs from Gaussian log        
+    # localize + initialize variables for extracting PARs from QM output
     #variable psf {}
     #variable pdb {}
     variable templateParFile {}
@@ -136,11 +136,11 @@ proc ::ForceFieldToolKit::GenBonded::sanityCheck { procType } {
                 if { ![file exists $templateParFile] } { lappend errorList "Cannot find template parameter file." }
             }
 
-            # make sure that gaussian log file is enetered and exists
+            # make sure that gaussian output file is entered and exists
             if { $glog eq "" } {
-                lappend errorList "No Gaussian log file was specified."
+                lappend errorList "No QM output file was specified."
             } else {
-                if { ![file exists $glog] } { lappend errorList "Cannot find Gaussian log file." }
+                if { ![file exists $glog] } { lappend errorList "Cannot find QM output file." }
             }
             
             # make sure that output file is specified and output dir is writable
@@ -174,7 +174,7 @@ proc ::ForceFieldToolKit::GenBonded::sanityCheck { procType } {
 }
 #======================================================
 proc ::ForceFieldToolKit::GenBonded::writeComFile {} {
-    # writes the gaussian input file for the hessian calculation
+    # writes the QM input file for the hessian calculation
     
     # localize necessary variables
     variable geomCHK
@@ -182,97 +182,21 @@ proc ::ForceFieldToolKit::GenBonded::writeComFile {} {
     variable qmProc
     variable qmMem
     variable qmRoute
+    variable qmCharge $::ForceFieldToolKit::GeomOpt::qmCharge
+    variable qmMult $::ForceFieldToolKit::GeomOpt::qmMult
     #variable psf
     set psf $::ForceFieldToolKit::Configuration::chargeOptPSF
     #variable pdb
     set pdb $::ForceFieldToolKit::Configuration::geomOptPDB
     variable lbThresh
+    
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # sanity check should go here
     if { ![::ForceFieldToolKit::GenBonded::sanityCheck writeComFile] } { return }
 
-    # load the molecule psf/pdb to get the internal coordinates
-    set logID [mol new $psf]
-    mol addfile $pdb $logID
-    ::QMtool::use_vmd_molecule $logID
-    set zmat [::QMtool::modredundant_zmat]
-  
-    # make a copy of the CHK file to prevent Gaussian from overwriting the original
-    set newCHKname "[file rootname $com].chk"
-    file copy $geomCHK $newCHKname
-    
-    # write the com file
-    set outfile [open $com w]
-    puts $outfile "%chk=[file tail $newCHKname]"
-    puts $outfile "%nproc=$qmProc"
-    puts $outfile "%mem=${qmMem}GB"
-    puts $outfile "$qmRoute"
-    puts $outfile ""
+    ::ForceFieldToolKit::${qmSoft}::WriteComFile_GenBonded $geomCHK $com $qmProc $qmMem $qmRoute $qmCharge $qmMult $psf $pdb $lbThresh
 
-    # shamelessly stolen from qmtool
-    # First delete all existing internal coordinates
-    puts $outfile "B * * K"
-    puts $outfile "A * * * K"
-    puts $outfile "L * * * K"
-    puts $outfile "D * * * * K"
-    #puts $outfile "O * * * * R"
-  
-    set num 0
-    set lbList {}
-    foreach entry $zmat {
-        # skip the qmtool zmat header (first line)
-        if {$num==0} { incr num; continue }
-
-        set indexes {}
-        foreach ind [lindex $entry 2] {
-            lappend indexes [expr {$ind+1}]
-        }
-        set type [string toupper [string index [lindex $entry 1] 0]]
-
-        # check for linear angle
-        if { $type eq "A" && [lindex $entry 3] > $lbThresh } {
-            # angle qualifies as a "linear bend"
-            set type "L"
-            lappend lbList $indexes
-        }
-
-        # check if standard dihedrals are part of linear bend (undefined)
-        set skipflag 0
-        if { $type eq "D" && [llength $lbList] > 0 } {
-            # test each linear bend in lbList against current dih indices definition
-            foreach ang $lbList {
-                # test forward and rev angle definitions
-                if { [string match "*$ang*" $indexes] || [string match "*[lreverse $ang]*" $indexes] } {
-                    # positive test -> leave this dihedral out
-                    set skipflag 1
-                    incr num
-                    break
-                }
-            }
-        }
-        if { $skipflag } { continue }
-      
-        # impropers modeled as dihedrals because Gaussian ignores out-of-plane bends
-        if {$type=="I"} { set type "D" }
-        if {$type=="O"} { set type "D" }
-
-        # write the entry to the input file
-        puts $outfile "$type $indexes A [regsub {[QCRM]} [lindex $entry 5] {}]"
-        #puts $outfile "$type $indexes $val [regsub {[QCRM]} [lindex $entry 5] {}]"
-        incr num
-    }
-
-    puts $outfile ""
-    close $outfile
-}
-#======================================================
-proc ::ForceFieldToolKit::GenBonded::resetGaussianDefaults {} {
-    # resets the gaussian settings to the default values
-    
-    set ::ForceFieldToolKit::GenBonded::qmProc 1
-    set ::ForceFieldToolKit::GenBonded::qmMem 1
-    set ::ForceFieldToolKit::GenBonded::qmRoute "\# MP2/6-31G* Geom=(AllCheck,ModRedundant) Freq NoSymm IOp(7/33=1) SCF=Tight Guess=Read"
-    #set ::ForceFieldToolKit::GenBonded::qmRoute "\# MP2/6-31G* Geom=(AllCheck,NewRedundant) Freq NoSymm Pop=(ESP,NPA) IOp(6/33=2,7/33=1) SCF=Tight"
 }
 #======================================================
 proc ::ForceFieldToolKit::GenBonded::extractBonded {} {
@@ -321,7 +245,7 @@ proc ::ForceFieldToolKit::GenBonded::extractBonded {} {
     # reTypeFromPSF/reChargeFromPSF has been depreciated
     # ::ForceFieldToolKit::SharedFcns::reTypeFromPSF $psf "top"
     
-    # load the Gaussian Log file from the hessian calculation
+    # load the QM output file from the hessian calculation
     set logID [mol new $psf]
     ::QMtool::use_vmd_molecule $logID
     ::QMtool::load_gaussian_log $glog $logID

@@ -1,5 +1,5 @@
 #
-# $Id: fftk_ChargeOpt.tcl,v 1.26 2017/03/17 19:11:10 mayne Exp $
+# $Id: fftk_ChargeOpt.tcl,v 1.27 2019/08/27 22:31:22 johns Exp $
 #
 
 #======================================================
@@ -36,7 +36,8 @@ namespace eval ::ForceFieldToolKit::ChargeOpt {
     
     variable tol
     variable dWeight
-
+    
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
     # Set in Procs
     variable QMEn
@@ -287,8 +288,8 @@ proc ::ForceFieldToolKit::ChargeOpt::sanityCheck {} {
     else { foreach parFile $parList { if { ![file exists $parFile] } { lappend errorList "Cannot open prm file: $parFile." } } }
         
     # make sure output file name (outFileName) isn't blank, and user can write to output dir
-    if { $outFileName eq "" } { lappend errorList "Output LOG file was not specified." } \
-    else { if { ![file writable [file dirname $outFileName]] } { lappend errorList "Cannot write to output LOG directory." } }
+    if { $outFileName eq "" } { lappend errorList "Output file was not specified." } \
+    else { if { ![file writable [file dirname $outFileName]] } { lappend errorList "Cannot write to output directory." } }
     
     
     # CHARGE CONSTRAINTS
@@ -323,25 +324,33 @@ proc ::ForceFieldToolKit::ChargeOpt::sanityCheck {} {
     
     # QM TARGET DATA
     # may also need some work.
-    # check cmpd QM single point energy log file is entered and exists
-    if { $baseHFLog eq "" } { lappend errorLog "QM single point energy log (HF) file for the compound was not specified." } \
-    else { if { ![file exists $baseHFLog] } { lappend errorLog "Cannot find QM single point energy (HF) log file for compound." } }
+    # check cmpd QM single point energy output file is entered and exists
+    if { $baseHFLog eq "" } { lappend errorLog "QM single point energy (HF) output file for the compound was not specified." } \
+    else { if { ![file exists $baseHFLog] } { lappend errorLog "Cannot find QM single point energy (HF) output file for compound." } }
     
-    # check cmpd QM single point energy (MP2) log file is entered and exists
-    if { $baseMP2Log eq "" } { lappend errorLog "QM single point energy (MP2) log file for the compound was not specified." } \
-    else { if { ![file exists $baseMP2Log] } { lappend errorLog "Cannot find QM single point energy (MP2) log file for compound." } }
+    # check cmpd QM single point energy (MP2) output file is entered and exists
+    if { $baseMP2Log eq "" } { lappend errorLog "QM single point energy (MP2) output file for the compound was not specified." } \
+    else { if { ![file exists $baseMP2Log] } { lappend errorLog "Cannot find QM single point energy (MP2) output file for compound." } }
     
-    # check wat QM single point energy log file is entered and exists
-    if { $watLog eq "" } { lappend errorLog "QM single point energy log file for water was not specified." } \
-    else { if { ![file exists $watLog] } { lappend errorLog "Cannot find QM single point energy log file for water." } }
+    # check wat QM single point energy output file is entered and exists
+    if { $watLog eq "" } { lappend errorLog "QM single point energy output file for water was not specified." } \
+    else { if { ![file exists $watLog] } { lappend errorLog "Cannot find QM single point energy output file for water." } }
     
-    # check that log file list isn't empty and each file exists
-
+    # check that output file list isn't empty and each file exists
     if { [llength $logFileList] == 0 } {
-        lappend errorList "No QM water-interaction energy log files loaded."
+        lappend errorList "No QM water-interaction energy output files loaded."
     } else {
         foreach logFile $logFileList { if { ![file exists $logFile] } { lappend errorLog "Cannot find water-interaction file: $logFile" } }
     }
+
+    # check that output files were run by the selected software
+    foreach l [list $baseHFLog $baseMP2Log $watLog ] {
+        if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $l]} {return -code error}
+    }
+    foreach l $logFileList {
+        if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $l]} {return -code error}
+    }
+
 
     # check that atom names are entered and exist only once in the molecule
     foreach atom $atomList {
@@ -438,6 +447,7 @@ proc ::ForceFieldToolKit::ChargeOpt::sanityCheck {} {
 proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     # rebuild charge optimization
     
+    variable qmSoft $::ForceFieldToolKit::qmSoft
     # need to localize all variables
     variable psfPath
     #variable pdbPath
@@ -643,6 +653,13 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
        set sel [atomselect $refmolid "water and name H2"]
        $sel moveto [lindex $watCoords 2]
        $sel delete
+
+       ##############################################################################################
+       # refiting the water interaction structures to the optimized geometry in the PBD if necessary
+       ##############################################################################################
+       ::ForceFieldToolKit::${qmSoft}::auxFit_ChargeOpt $refmolid $resName
+       ##############################################################################################
+       
     }
 
     # measure the qm distances (unscaled)
@@ -1167,7 +1184,15 @@ proc ::ForceFieldToolKit::ChargeOpt::optCharges { inpCharges } {
     # calc the MM dipole vector magnitude
     set dipoleMMmag [veclength $dipoleMMvec]
 
-
+    ###########################################################################
+    # Check $dipoleMMvec is not (0 0 0) or it will crash in some corner cases
+    ###########################################################################
+    if {[catch {vecnorm $dipoleMMvec} fid]} {
+        puts "Initial charges are zero"
+        set dipoleMMvec [vecadd $dipoleMMvec {0 0 0.0001}]
+        puts "New dipoleMMvec: $dipoleMMvec"
+    }
+    ###########################################################################
 
     # Calculate the objective value
     set totalObj 0.0
@@ -1237,148 +1262,30 @@ proc ::ForceFieldToolKit::ChargeOpt::optCharges { inpCharges } {
 #======================================================
 proc ::ForceFieldToolKit::ChargeOpt::getscf { file } {
     variable simtype
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
-   set scfenergies {}
-
-   set fid [open $file r]
-
-   set hart_kcal 1.041308e-21; # hartree in kcal
-   set mol 6.02214e23;
-
-   set num 0
-   set ori 0
-   set tmpscf {}
-   set optstep 0
-   set scanpoint 0
-   
-   while {![eof $fid]} {
-      set line [string trim [gets $fid]]
-
-      # Stop reading on errors
-      if {[string match "Error termination*" $line]} { puts $line; return $scfenergies }
-
-      # We only read Link0
-      if {[string match "Normal termination of Gaussian*" $line]} { variable normalterm 1; break }
-            
-      if {$simtype=="Relaxed potential scan"} {
-         if {[string match "Step number * out of a maximum of * on scan point * out of *" $line]} {
-            set optstep   [lindex $line 2]
-            set scanpoint [lindex $line 12]
-            set scansteps [lindex $line 15]
-#            puts "SCAN: optstep $optstep on scan point $scanpoint out of $scansteps"
-         }
-      }
-            
-     if {[string match "SCF Done:*" $line] || [string match "Energy=* NIter=*" $line]} {
-         if {[string match "SCF Done:*" $line]} {
-            set scf [lindex $line 4]
-         } else {
-            set scf [lindex $line 1]
-         }
-         set scfkcal [expr {$scf*$hart_kcal*$mol}]
-         if {$num==0} { set ori $scf }
-         set scfkcalori [expr {($scf-$ori)*$hart_kcal*$mol}]
-         # In case of a relaxed potential scan we replace the previous energy of the same scanstep,
-         # otherwise we just append all new scf energies
-         if {$optstep==1 || !($simtype=="Relaxed potential scan")} {
-            if {[llength $tmpscf]} { lappend scfenergies $tmpscf; set tmpscf {} }
-#            puts [format "%i: SCF = %f hart = %f kcal/mol; rel = %10.4f kcal/mol" $num $scf $scfkcal $scfkcalori]
-         }
-         set tmpscf [list $num $scfkcal]
-
-         incr num
-      }
-
-   }
-   close $fid
-   if {[llength $tmpscf]} { lappend scfenergies $tmpscf }
-
-   return $scfenergies
+    return [::ForceFieldToolKit::${qmSoft}::getscf_ChargeOpt $file $simtype]
 }
 #======================================================
 proc ::ForceFieldToolKit::ChargeOpt::getMolCoords { file numMolAtoms } {
 
-   set fid [open $file r]
-   ::QMtool::init_variables ::QMtool
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
-   ::QMtool::read_gaussian_cartesians $fid qmtooltemppdb.pdb last
-   file delete qmtooltemppdb.pdb
-   set coordlist [lindex [::QMtool::get_cartesian_coordinates] 0]
-    
-   close $fid
-
-   return [lrange $coordlist 0 [expr $numMolAtoms - 1]]
+    return [::ForceFieldToolKit::${qmSoft}::getMolCoords_ChargeOpt $file $numMolAtoms]
 }
 #======================================================
 proc ::ForceFieldToolKit::ChargeOpt::getWatCoords { file } {
-   
-   set fid [open $file r]
-   ::QMtool::init_variables ::QMtool
 
-   ::QMtool::read_gaussian_cartesians $fid qmtooltemppdb.pdb last
-   file delete qmtooltemppdb.pdb
-   set coordlist [lindex [::QMtool::get_cartesian_coordinates] 0]
-   set atomlist [::QMtool::get_atomproplist]
-   set numAtoms [llength $atomlist]
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 
-   set Hcount 0
-   for {set i [expr $numAtoms - 4]} {$i < $numAtoms} {incr i} {
-      set name [lindex [lindex $atomlist $i] 1]
-      if { [string match "O*" $name] } {
-         set Ocoord [lindex $coordlist $i]
-      } elseif { [string match "H*" $name] && $Hcount == 1} {
-         set H2coord [lindex $coordlist $i]
-         set Hcount 2
-      } elseif { [string match "H*" $name] && $Hcount == 0} {
-         set H1coord [lindex $coordlist $i]
-         set Hcount 1
-      }
-   }
-
-   close $fid
-
-   set coords [list $Ocoord $H1coord $H2coord]
-   return $coords
-
+    return [::ForceFieldToolKit::${qmSoft}::getWatCoords_ChargeOpt $file]
 }
 #======================================================
 proc ::ForceFieldToolKit::ChargeOpt::getDipoleData { filename } {
-    # parse relevant dipole data from QM single point LOG file
-
-    # initialize some variables
-    set coords {}
-    set qmVec {}
-    set qmMag {}
-
-    # open the file for reading
-    set inFile [open $filename r]
-
-    # parse the LOG file
-    # burn lines until we find the std orientation
-    while { [set inLine [string trim [gets $inFile]]] ne "Standard orientation:" } { continue }
-
-    # once std orientation is found, burn header (4 lines)
-    for {set i 0} {$i < 4} {incr i} { gets $inFile }
-
-    # read in the coords
-    while { ![regexp {^-*$} [set inLine [string trim [gets $inFile]]]] } {
-        lappend coords [lrange $inLine 3 5]
-    }
-
-    # burn until find the dipole moment
-    while { [set inLine [string trim [gets $inFile]]] ne "Dipole moment (field-independent basis, Debye):"} { continue }
-
-    # parse the dipole moment
-    set inLine [string trim [gets $inFile]]
-    set qmVec [list [lindex $inLine 1] [lindex $inLine 3] [lindex $inLine 5]]
-    set qmMag [lindex $inLine 7]
-
-    # we're done with the LOG file
-    unset inLine
-    close $inFile
-
-    return [list $coords $qmVec $qmMag]
     
+    variable qmSoft $::ForceFieldToolKit::qmSoft
+
+    return [::ForceFieldToolKit::${qmSoft}::getDipoleData_ChargeOpt $filename]
 }
 #======================================================
 proc ::ForceFieldToolKit::ChargeOpt::writeMinConf { name psf pdb parlist {extrabFile ""} } {
