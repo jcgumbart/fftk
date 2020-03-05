@@ -1215,7 +1215,8 @@ proc ::ForceFieldToolKit::ORCA::zmatqm_BondAngleOpt { debug debugLog hessLogID h
             # jump to the coordinates
             for { set i 0 } { $i < 11 } { incr i } { gets $inFile }
             while { [regexp {[0-9]} [set inLine [string trim [gets $inFile]]]] } {
-                 set typePar [string index [lindex $inLine 1] 0]
+                 set slist [concat {*}[split $inLine " ,()"]]
+                 set typePar [lindex $slist 1]
                  lappend $typeList $typePar
                  switch $typePar {
                    B { set typePar bond; incr nbonds }
@@ -1228,18 +1229,18 @@ proc ::ForceFieldToolKit::ORCA::zmatqm_BondAngleOpt { debug debugLog hessLogID h
                    Z { continue }
                  }
                  if { [string match "*bond" $typePar] } {
-                     set indexlist [list [string index [lindex $inLine 3] 0] [string index [lindex $inLine 2] 0]]
-                     set val [lindex $inLine 7]
+                     set indexlist [list [lindex $slist 5] [lindex $slist 3]]
+                     set val [lindex $slist end]
                      lappend zmatqm [list "R$nbonds" $typePar $indexlist $val {{} {}} $flag $scan]
 
                  } elseif { [string equal "angle" $typePar] } {
-                     set indexlist [list [string index [lindex $inLine 2] 0] [string index [lindex $inLine 3] 0] [string index [lindex $inLine 4] 0]]
-                     set val [lindex $inLine 8]
+                     set indexlist [list [lindex $slist 3] [lindex $slist 5] [lindex $slist 7]]
+                     set val [lindex $slist end]
                      lappend zmatqm [list "A$nangles" $typePar $indexlist $val {{} {} {} {}} $flag $scan]
 
                  } elseif {[string equal "dihed" $typePar]} {
-                     set indexlist [list [string index [lindex $inLine 2] 0] [string index [lindex $inLine 3] 0] [string index [lindex $inLine 4] 0] [string index [lindex $inLine 5] 0]]
-                     set val [lindex $inLine 9]
+                     set indexlist [list [lindex $slist 3] [lindex $slist 5] [lindex $slist 7] [lindex $slist 9]]
+                     set val [lindex $slist end]
                      lappend zmatqm [list "D$ndiheds" $typePar $indexlist $val {{} {} {}} $flag $scan]
                  }
             }
@@ -1247,7 +1248,7 @@ proc ::ForceFieldToolKit::ORCA::zmatqm_BondAngleOpt { debug debugLog hessLogID h
             set havepar 1
             set havefc 1 ;# not sure where this comes from
             lset zmatqm 0 [list $natoms $ncoords $nbonds $nangles $ndiheds $nimprops $havepar $havefc]
-            foreach ele $zmatqm { puts $ele }
+            #foreach ele $zmatqm { puts $ele }
         }
     }
 
@@ -1263,7 +1264,7 @@ proc ::ForceFieldToolKit::ORCA::zmatqm_BondAngleOpt { debug debugLog hessLogID h
 #===========================================================================================================
 proc ::ForceFieldToolKit::ORCA::get_inthessian_kcal_BondAngleOpt { hessLogID hessLog } { 
 
-    set fid [open "[file rootname $hessLog]_internal.hess" r]
+    set fid [open "[file rootname $hessLog]_job2_internal.hess" r]
     set dimHess 0
     set hess {}
     set inthessian_kcal {}
