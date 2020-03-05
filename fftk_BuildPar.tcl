@@ -569,7 +569,11 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
         switch [lindex $inline 0] {
             {END} { break }
             {ATOM} {
+                #TODO: reading Penalty correctly when it has comment following (1.23!...)
+                #TODO: check for LPH
                 set sel [atomselect $molid "index $atomIndex_read"]
+                puts [$sel num]
+                puts $atomIndex_read
                 #set sel [atomselect $molid "name [lindex $inline 1]"]
                 $sel set name   [lindex $inline 1]
                 $sel set type   [lindex $inline 2]
@@ -611,6 +615,10 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
                 #puts "attemping: topo addimproper $atomIndexString"; flush stdout
                 eval topo addimproper $atomIndexString
                 unset atomIndexString
+            }
+            {LONEPAIR} {
+                #TODO
+                ;
             }
         }
     }
