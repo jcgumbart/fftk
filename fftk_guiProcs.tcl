@@ -867,7 +867,8 @@ proc ::ForceFieldToolKit::gui::bparCGenFFWritePSFPDB {} {
     # Write the PSF/PDB file pair
     set sel [atomselect $::ForceFieldToolKit::gui::bparCGenFFMolID "all"]
     set fname [file join $::ForceFieldToolKit::BuildPar::cgenffOutPath $::ForceFieldToolKit::BuildPar::cgenffResname]
-    $sel writepsf ${fname}.psf
+    ::ForceFieldToolKit::SharedFcns::LonePair::writePSF $::ForceFieldToolKit::gui::bparCGenFFMolID "${fname}.psf"
+    #$sel writepsf ${fname}.psf
     $sel writepdb ${fname}.pdb
     $sel delete
     unset fname

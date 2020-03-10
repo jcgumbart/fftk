@@ -714,12 +714,63 @@ proc ::ForceFieldToolKit::SharedFcns::ParView::addParObject {args} {
 }
 #======================================================
 namespace eval ::ForceFieldToolKit::SharedFcns::LonePair {
-    variable index
-    variable host1
-    variable host2
-    variable dist
+    variable LPinfo
 }
 #======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
+    variable LPinfo
+    set LPinfo $LPDict
+
+    # add lone pair atoms if needed
+    set toBuildLP [dict filter $LPinfo value "*index -1*"]
+    set numToBuildLP [dict size $toBuildLP]
+    if {$numToBuildLP > 0} {
+        set lpMol [mol new atoms $numToBuildLP]
+        animate dup $lpMol
+
+        set n [molinfo $molID get numatoms]
+        set i 0
+        dict for {name info} $toBuildLP {
+            dict set LPinfo $name index [expr $n + $i]
+            set sel [atomselect $lpMol "index $i"]
+            dict with info {
+                $sel set name   $name
+                $sel set type   $type
+                $sel set charge $charge
+                $sel set beta   $penalty
+                $sel set mass   0
+            }
+            $sel delete
+            incr i
+        }
+        set sel0 [atomselect $molID all]
+        set sel1 [atomselect $lpMol all]
+        set betas "[$sel0 get beta] [$sel1 get beta]"
+        $sel0 delete
+        $sel1 delete
+
+        set mergeMol [::TopoTools::mergemols "$molID $lpMol"]
+        set sel [atomselect $mergeMol all]
+        $sel set beta $betas
+        $sel delete
+
+        mol delete $molID
+        mol delete $lpMol
+        set molID $mergeMol
+    }
+
+    # construct lp positions
+    set selnolp [atomselect $molID "mass > 0"]
+    set selall  [atomselect $molID all]
+    $selall set {x y z} [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate [$selnolp get {x y z}]]
+
+
+    return $molID
+
+}
+#======================================================
+# !!!WARNING!!!! OUTDATED! WONT WORK!
+# TODO: rewrite to init from PSF and use dictionary
 proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID {resName ""} } {
     # initialize the lp list and its hosts and its distance from host1
 
@@ -760,19 +811,18 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID {resName ""} } {
 proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
     # generate lone pair position on QMcoords
 
-    variable index
-    variable host1
-    variable host2
-    variable dist
+    variable LPinfo
 
-    foreach i $index h1 $host1 h2 $host2 d $dist {
-       set xyz_h1 [lindex $coords $h1]
-       set xyz_h2 [lindex $coords $h2]
+    dict for {name info} $LPinfo {
+        dict with info {
+            set xyz_h1 [lindex $coords $host1]
+            set xyz_h2 [lindex $coords $host2]
 
-       set dir [vecnorm [vecsub $xyz_h1 $xyz_h2]]
-       set pos [vecadd $xyz_h1 [vecscale $d $dir]]
+            set dir [vecnorm [vecsub $xyz_h1 $xyz_h2]]
+            set pos [vecadd $xyz_h1 [vecscale $dist $dir]]
 
-       set coords [linsert $coords $i $pos]
+            set coords [linsert $coords $index $pos]
+        }
     }
 
     return $coords
@@ -802,6 +852,105 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP { psf pdb } {
     $nolp delete
 
     return $molID
+}
+#======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
+    variable LPinfo
+
+    set sel [atomselect $molID all]
+    $sel writepsf $fname
+    $sel delete
+
+  # By Brian Radak (copied from psfgen: topo_mol_output.c)
+  # Requirements for NAMD as I understand them:
+  # 1) LP has 0 mass and follows parent atoms (the "LP hosts", in this case CL and C6)
+  #
+  # 2) bond between LP and parent should be optional in the bonds section, but
+  #    this might be necessary * for building migration groups properly?
+  #
+  # 3) no angles, dihedrals, etc. should contain LP, this might just be because those
+  #    types are not * defined
+
+  # 4) the new "!NUMLP NUMLPH" section in the PSF should exist. The presence of
+  #    this section * automatically toggles the now deprecated "lonepairs on"
+  #    keyword and is also required for "drude * on". Format is as follows:
+  # =========
+  # <# of lonepairs> <# of lonepairs + # of lphosts> !NUMLP NUMLPH
+  # .
+  # :
+  # <# of lphosts for this lonepair> <the pointer for this lonepair> F <distance> <angle> <dihedral>
+  # .
+  # :
+  # <lonepair indices>
+  # <lonepair index> <lphost1> <lphost2> .... <lonepair index> ...
+  # ==========
+
+  # Note the mislabeling of NUMLPH in the comment, the actual number of hosts is
+  # the second number * minus the first.
+
+  # For each entry, a collinear lonepair has 2 hosts and a bisectory has 3. I
+  # forget what F mean * ("fixed"?) this is the only option I've seen and the
+  # only one NAMD accepts. All entries require a * <distance>, <angle>, <dihedral>
+  # specification. For collinear lonepairs dihedral is read, but * ignored. <angle>
+  # is interpreted as a scale parameter that shifts the origin for the colinear x distance
+  # back along the bond between the parent atom and the other host. A value of 0.0 means
+  # that * the origin of the distance is the parent atom.
+  #
+  # The lonepairs are essentially double indexed (starting at one in Fortran style),
+  # once as an atom * and again within the list of lonepairs and hosts. So for the example,
+  # the first lonepair has index * 1, which refers to the 13, which is the lonepair
+  # atom index. The 2 for that entry indicates two * extra host entries (12 and 11,
+  # lonepair indices 2 and 3) and because it is collinear, the lonepair * is bound to atom 12.
+
+  # An additional lonepair would have index 4, add either 2 or 3 more hosts to the
+  # index list and thus * add 3 or 4 more entries. The index list should wrap to the
+  # next line after every 8 entries.
+  # Example, lets add two 5 point SWM4 waters with bisector lonepairs after the chorobenzene.
+  # The new section would be:
+
+  # 3        11 !NUMLP NUMLPH
+  # 2         1   F   1.64000       0.00000       0.00000
+  # 3         4   F  -0.240345     0.00000       0.00000
+  # 3         8   F  -0.240345     0.00000       0.00000
+  # 13        12        11        16       14      17        18        21
+  # 19        22        23
+
+    if { [info exist LPinfo] && [dict size $LPinfo] > 0 } {
+        set fp [open $fname a]
+
+        # currently we only handle colinear lps
+        # so numlph = numlp*3
+        set n [dict size $LPinfo]
+        puts $fp [format "%8d %8d !NUMLP NUMLPH" $n [expr $n*3]]
+
+        dict for {name info} $LPinfo {
+            set i 1
+            dict with info {
+                # 2 hosts, index, F, distance, angle, dihedral
+                puts $fp [format "%8d %8d %-6s %10.4f %10.4f %10.4f" 2 $i "F" $dist 0 0]
+                incr i 3
+            }
+        }
+
+        set i 1
+        dict for {name info} $LPinfo {
+            dict with info {
+                foreach var {index host1 host2} {
+                    # newline every 8 entries
+                    if {$i >= 8} {
+                        puts $fp ""
+                        set i 0
+                    }
+
+                    puts -nonewline $fp [format " %9d" [eval expr $$var + 1]]
+                    incr i
+                }
+            }
+        }
+        puts $fp ""
+
+        close $fp
+    }
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::checkWhichQM { outFile } {

@@ -545,15 +545,6 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
     # load molecule
     set molid [mol new $cgenffMol waitfor all]
 
-    # since we are changing the atom names below, the "name" coloring method gets mangled
-    # go ahead and switch to color by element
-    mol modcolor 0 $molid Element
-
-    # set molecule-level data
-    set sel [atomselect $molid "all"]
-    $sel set resname $cgenffResname
-    $sel set chain   $cgenffChain
-    $sel set segname $cgenffSegment
     topo clearbonds
 
     # process the CGenFf Program data
@@ -569,16 +560,44 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
         switch [lindex $inline 0] {
             {END} { break }
             {ATOM} {
-                #TODO: reading Penalty correctly when it has comment following (1.23!...)
-                #TODO: check for LPH
+                set name    [lindex $inline 1]
+                set type    [lindex $inline 2]
+                set charge  [lindex $inline 3]
+                set penalty [lindex $inline 5]
+
+                # check if penalty is followed by an "!"
+                if { [string index $penalty end] == "!" } {
+                    set penalty [string trimright $penalty 1]
+                }
+                # check if penalty is an number
+                if { ! [string is double $penalty] } {
+                    set penalty 0.0
+                }
+
                 set sel [atomselect $molid "index $atomIndex_read"]
-                puts [$sel num]
-                puts $atomIndex_read
                 #set sel [atomselect $molid "name [lindex $inline 1]"]
-                $sel set name   [lindex $inline 1]
-                $sel set type   [lindex $inline 2]
-                $sel set charge [lindex $inline 3]
-                $sel set beta   [lindex $inline 5]
+
+                # lone pairs for halogens
+                if { [string compare $type "LPH"] == 0 } { 
+                    dict set LPDict $name type    $type
+                    dict set LPDict $name charge  $charge
+                    dict set LPDict $name penalty $penalty
+
+                    # if the selected atom is not a valid lone pair
+                    if { "[$sel get mass]" != 0} {
+                        dict set LPDict $name index "-1"
+                        $sel delete
+                        continue 
+                    }
+                    else {
+                        dict set LPDict $name index $atomIndex_read
+                    }
+                }
+
+                $sel set name   $name
+                $sel set type   $type
+                $sel set charge $charge
+                $sel set beta   $penalty
                 $sel delete
                 incr atomIndex_read
             }
@@ -617,12 +636,32 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
                 unset atomIndexString
             }
             {LONEPAIR} {
-                #TODO
-                ;
+                # halogen LP should be colinear
+                if { [string compare [lindex $inline 1] "COLI"] == 0 } {
+                    set name  [lindex $inline 2]
+
+                    if {[dict exists $LPDict $name]} {
+                        set atomNameList [lrange $inline 3 4]
+                        foreach atomName $atomNameList varName {host1 host2} {
+                            set sel [atomselect $molid "name $atomName"]
+                            dict set LPDict $name $varName [$sel get index]
+                            $sel delete
+                        }
+                        dict set LPDict $name dist [lindex $inline 6]
+                    } else {
+                        # TODO: print warning
+                    }
+                } else {
+                    # TODO: print warning
+                }
             }
         }
     }
     
+    if {[info exists LPDict]} {
+        set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromDict $molid $LPDict]
+    }
+
     topo guessangles -molid $molid
     topo guessdihedrals -molid $molid
     topo guessatom element mass
@@ -721,6 +760,18 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
         }; # end of outer switch
     }; # end while (reading file)
     close $infile
+
+    # since we are changing the atom names below, the "name" coloring method gets mangled
+    # go ahead and switch to color by element
+    mol modcolor 0 $molid Element
+
+    # set molecule-level data
+    set sel [atomselect $molid "all"]
+    $sel set resname $cgenffResname
+    $sel set chain   $cgenffChain
+    $sel set segname $cgenffSegment
+    $sel set resid   [lindex [$sel get resid] 0]
+    $sel delete
 
     # store the data in the namespaced variable for later accession
     set cgenffExistingPars [list $bonds_exist $angles_exist $dihedrals_exist $impropers_exist]
