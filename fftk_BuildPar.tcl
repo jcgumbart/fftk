@@ -584,13 +584,13 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
                     dict set LPDict $name penalty $penalty
 
                     # if the selected atom is not a valid lone pair
-                    if { "[$sel get mass]" != 0} {
+                    if { [$sel num] <= 0 || [string first "LP" [$sel get name]] < 0 } {
                         dict set LPDict $name index "-1"
                         $sel delete
                         continue 
-                    }
-                    else {
+                    } else {
                         dict set LPDict $name index $atomIndex_read
+                        $sel set mass 0
                     }
                 }
 

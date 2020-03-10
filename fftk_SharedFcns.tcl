@@ -718,6 +718,7 @@ namespace eval ::ForceFieldToolKit::SharedFcns::LonePair {
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
+    # initialize the lp list by using a dictionary provided. Generate the nonexisting LPs
     variable LPinfo
     set LPinfo $LPDict
 
@@ -916,18 +917,114 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
   # 19        22        23
 
     if { [info exist LPinfo] && [dict size $LPinfo] > 0 } {
-        set fp [open $fname a]
+        set fp_in [open $fname r]
+        set lines [split [read -nonewline $fp_in] "\n"]
+        close $fp_in
+
+        # get lone pair indices
+        set lp_indices {}
+        dict for {name value} $LPinfo {
+            dict with value {
+                lappend lp_indices $index
+            }
+        }
+        set lp_indices [lsort -integer $lp_indices]
+
+        set fp_out [open "tmp.psf" w]
+        set mode header
+        foreach line $lines {
+            switch $mode {
+                header {
+                    # copy line
+                    puts $fp_out $line
+
+                    # find if the psffile is in extended mode
+                    if {[lindex $line 1] == "EXT"} {
+                        set charmmext true
+                    } else {
+                        set charmmext false
+                    }
+                    set mode findatom
+                }
+                findatom {
+                    # copy line
+                    puts $fp_out $line
+
+                    # Look for the NATOM
+                    if {[string first "NATOM" $line] >= 0} {
+                        set nrec [lindex $line 0]
+                        set index 0
+                        set lpi 0
+
+                        set mode readatom
+                    }
+                }
+                readatom {
+                    # read atom info
+                    set rc [scan $line "%d %8s %8s %8s %8s %8s %lf %lf %d" \
+                        num segname resid resname name atype charge mass lpd]
+
+                    if {$num-1 == [lindex $lp_indices $lpi]} {
+                        # if lone pair, change lpd to -1
+                        set lpd -1
+
+                        if {$charmmext} {
+                            set fmt "%10d %-8s %-8s %-8s %-8s %-6s %10.6f    %10.4f  %10d"
+                        } else {
+                            set fmt "%8d %-4s %-4s %-4s %-4s %-4s %10.6f    %10.4f  %10d"
+                        }
+                        puts $fp_out [format $fmt $num $segname $resid $resname $name $atype $charge $mass $lpd]
+
+                        incr lpi
+                    } else {
+                        # if not lone pair, just copy
+                        puts $fp_out $line
+                    }
+
+                    incr index
+                    if {$index >= $nrec} {
+                        set mode findnumlp
+                    }
+                }
+                findnumlp {
+                    # Look for the NUMLP
+                    if {[string first "NUMLP" $line] >= 0} {
+                        set nrec [lindex $line 0]
+                        set index 0
+                        set lpi 0
+
+                        # discard the existing NUMLP entries
+                        # in case in the future atomselect can write NUMLP entries
+                        set mode discard
+                    } else {
+                        # copy line
+                        puts $fp_out $line
+                    }
+                }
+                discard {
+                    incr index
+                    if {$index >= $nrec} {
+                        set mode default
+                    }
+                }
+                default {
+                    # copy line
+                    puts $fp_out $line
+                }
+            }
+        }
+
 
         # currently we only handle colinear lps
         # so numlph = numlp*3
         set n [dict size $LPinfo]
-        puts $fp [format "%8d %8d !NUMLP NUMLPH" $n [expr $n*3]]
+        puts $fp_out [format "%8d %8d !NUMLP NUMLPH" $n [expr $n*3]]
 
         dict for {name info} $LPinfo {
             set i 1
             dict with info {
                 # 2 hosts, index, F, distance, angle, dihedral
-                puts $fp [format "%8d %8d %-6s %10.4f %10.4f %10.4f" 2 $i "F" $dist 0 0]
+                puts $fp_out [format "%8d %8d %-6s %10.4f %10.4f %10.4f" 2 $i "F" $dist 0 0]
                 incr i 3
             }
         }
@@ -938,18 +1035,21 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
                 foreach var {index host1 host2} {
                     # newline every 8 entries
                     if {$i >= 8} {
-                        puts $fp ""
+                        puts $fp_out ""
                         set i 0
                     }
 
-                    puts -nonewline $fp [format " %9d" [eval expr $$var + 1]]
+                    puts -nonewline $fp_out [format " %9d" [eval expr $$var + 1]]
                     incr i
                 }
             }
         }
-        puts $fp ""
+        puts $fp_out ""
+        puts $fp_out ""
 
-        close $fp
+        close $fp_out
+
+        file rename -force "tmp.psf" $fname
     }
 }
 #======================================================
