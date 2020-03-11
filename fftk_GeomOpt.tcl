@@ -5,6 +5,7 @@
 #======================================================
 namespace eval ::ForceFieldToolKit::GeomOpt:: {
 
+    variable psf
     variable pdb
     variable com
     
@@ -23,6 +24,7 @@ namespace eval ::ForceFieldToolKit::GeomOpt:: {
 proc ::ForceFieldToolKit::GeomOpt::init {} {
     
     # localize variables
+    variable psf
     variable pdb
     variable com
     
@@ -38,6 +40,7 @@ proc ::ForceFieldToolKit::GeomOpt::init {} {
     variable qmSoft $::ForceFieldToolKit::qmSoft
     
     # Set Variables to Initial value
+    set psf {}
     set pdb {}
     set com {}
     
@@ -125,6 +128,7 @@ proc ::ForceFieldToolKit::GeomOpt::writeComFile {} {
     # writes the QM input file for the geometry optimization
     
     # localize relevant variables
+    variable psf
     variable pdb
     variable com
     variable qmProc
@@ -137,8 +141,16 @@ proc ::ForceFieldToolKit::GeomOpt::writeComFile {} {
     # sanity check
     if { ![::ForceFieldToolKit::GeomOpt::sanityCheck] } { return }
 
+    # load structure
+    set molID [::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP $psf $pdb]
+
+    # NEW 02/01/2019: Checking "element" is defined
+    ::ForceFieldToolKit::SharedFcns::checkElementPDB
+
     # call procedure to write input file for QM geometry optimization
-    ::ForceFieldToolKit::${qmSoft}::writeComGeomOpt $pdb $com $qmProc $qmMem $qmCharge $qmMult $qmRoute 
+    ::ForceFieldToolKit::${qmSoft}::writeComGeomOpt $molID $com $qmProc $qmMem $qmCharge $qmMult $qmRoute 
+
+    mol delete $molID
 
 }
 #======================================================
@@ -146,9 +158,16 @@ proc ::ForceFieldToolKit::GeomOpt::loadLogFile {} {
     # loads the output file from the geometry optimization
     
     # localize relevant variables
+    variable psf
     variable pdb
     variable logFile
     variable qmSoft $::ForceFieldToolKit::qmSoft
+
+    # check to makes sure that psf is set
+    if { $psf eq "" || ![file exists $psf] } {
+        tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "PSF file was not specified or could not be found."
+        return
+    }
 
     # check to makes sure that pdb is set
     if { $pdb eq "" || ![file exists $pdb] } {
@@ -165,8 +184,13 @@ proc ::ForceFieldToolKit::GeomOpt::loadLogFile {} {
     # make sure qmSoft variable is set to the right value for the selected output file
     if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $logFile]} {return}
 
+    # load structure
+    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf
+    set molID [mol new $psf]
+    mol addfile $pdb
+
     # call procedure to load output file from QM geometry optimization
-    ::ForceFieldToolKit::${qmSoft}::readOutGeomOpt $pdb $logFile
+    ::ForceFieldToolKit::${qmSoft}::readOutGeomOpt $molID $logFile
 
     # message the console
     ::ForceFieldToolKit::gui::consoleMessage "Geometry optimization output file loaded"
@@ -176,6 +200,7 @@ proc ::ForceFieldToolKit::GeomOpt::writeOptPDB {} {
     # writes a new pdb file with coordinates for optimized geometry
     
     # localize relevant variables
+    variable psf
     variable pdb
     variable logFile
     variable optPdb
@@ -202,6 +227,8 @@ proc ::ForceFieldToolKit::GeomOpt::writeOptPDB {} {
         return
     }
     
+    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf
+
     # call procedure to write the optimized file as a new PDB file
     ::ForceFieldToolKit::${qmSoft}::writePDBGeomOpt $pdb $logFile $optPdb
     

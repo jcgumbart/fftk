@@ -21,21 +21,15 @@ proc ::ForceFieldToolKit::Gaussian::resetDefaultsGeomOpt {} {
 
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::Gaussian::writeComGeomOpt { pdb com qmProc qmMem qmCharge qmMult qmRoute } {
+proc ::ForceFieldToolKit::Gaussian::writeComGeomOpt { molID com qmProc qmMem qmCharge qmMult qmRoute } {
     # write input file for geometry optimization
-
-    # load structure
-    mol new $pdb
-
-    # NEW 02/01/2019: Checking "element" is defined
-    ::ForceFieldToolKit::SharedFcns::checkElementPDB
 
     # assign atom names and gather x,y,z for output com file
     set Gnames {}
     set atom_info {}
 
-    for {set i 0} {$i < [molinfo top get numatoms]} {incr i} {
-        set temp [atomselect top "index $i"]
+    for {set i 0} {$i < [molinfo $molID get numatoms]} {incr i} {
+        set temp [atomselect $molID "index $i"]
         lappend atom_info [list [$temp get element][expr $i+1] [$temp get x] [$temp get y] [$temp get z]]
         lappend Gnames [$temp get element][expr $i+1]
         $temp delete
@@ -63,15 +57,13 @@ proc ::ForceFieldToolKit::Gaussian::writeComGeomOpt { pdb com qmProc qmMem qmCha
 
     # clean up
     close $outfile
-    mol delete top
 
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::Gaussian::readOutGeomOpt { pdb logFile } {
+proc ::ForceFieldToolKit::Gaussian::readOutGeomOpt { molId logFile } {
     # load output file from geometry optimization
 
-    # load the pdb file, followed by the coordinates from gaussian log
-    set molId [mol new $pdb]
+    # load the coordinates from gaussian log
     set inFile [open $logFile r]
 
     while { ![eof $inFile] } {
@@ -84,15 +76,13 @@ proc ::ForceFieldToolKit::Gaussian::readOutGeomOpt { pdb logFile } {
             while { ![regexp {^-*$} [set inLine [string trim [gets $inFile]]]] } {
                 lappend coords [lrange $inLine 3 5]
             }
+            set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $coords]
+
             # add a new frame, set the coords 
-            mol addfile $pdb
-            for {set i 0} {$i < [llength $coords]} {incr i} {
-                set temp [atomselect $molId "index $i"]
-                $temp set x [lindex $coords $i 0]
-                $temp set y [lindex $coords $i 1]
-                $temp set z [lindex $coords $i 2]
-                $temp delete
-            }
+            animate dup $molId
+            set temp [atomselect $molId all]
+            $temp set {x y z} $coords
+            $temp delete
             unset coords
         } else {
             continue
@@ -126,14 +116,12 @@ proc ::ForceFieldToolKit::Gaussian::writePDBGeomOpt { pdb logFile optPdb } {
             while { ![regexp {^-*$} [set inLine [string trim [gets $inFile]]]] } {
                 lappend coords [lrange $inLine 3 5]
             }
+            set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $coords]
+
             # (re)set the coords 
-            for {set i 0} {$i < [llength $coords]} {incr i} {
-                set temp [atomselect $molId "index $i"]
-                $temp set x [lindex $coords $i 0]
-                $temp set y [lindex $coords $i 1]
-                $temp set z [lindex $coords $i 2]
-                $temp delete
-            }
+            set temp [atomselect $molId all]
+            $temp set {x y z} $coords
+            $temp delete
             unset coords
         } else {
             continue

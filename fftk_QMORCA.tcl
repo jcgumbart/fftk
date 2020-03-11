@@ -9,18 +9,13 @@ namespace eval ::ForceFieldToolKit::ORCA {
 #===========================================================================================================
 # GEOMETRY OPTIMIZATION
 #===========================================================================================================
-proc ::ForceFieldToolKit::ORCA::writeComGeomOpt { pdb com qmProc qmMem qmCharge qmMult qmRoute } {
-
-    mol new $pdb
-
-    # NEW 02/01/2019: Checking "element" is defined
-    ::ForceFieldToolKit::SharedFcns::checkElementPDB
+proc ::ForceFieldToolKit::ORCA::writeComGeomOpt { molID com qmProc qmMem qmCharge qmMult qmRoute } {
 
     set Gnames {}
     set atom_info {}
 
-    for {set i 0} {$i < [molinfo top get numatoms]} {incr i} {
-        set temp [atomselect top "index $i"]
+    for {set i 0} {$i < [molinfo $molID get numatoms]} {incr i} {
+        set temp [atomselect $molID "index $i"]
         lappend atom_info [list [$temp get element] [$temp get x] [$temp get y] [$temp get z]]
         lappend Gnames [$temp get element]
         $temp delete
@@ -54,7 +49,6 @@ proc ::ForceFieldToolKit::ORCA::writeComGeomOpt { pdb com qmProc qmMem qmCharge 
 
     # clean up
     close $outfile
-    mol delete top
 
 }
 #===========================================================================================================

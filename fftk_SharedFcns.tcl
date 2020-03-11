@@ -720,10 +720,27 @@ namespace eval ::ForceFieldToolKit::SharedFcns::LonePair {
 proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
     # initialize the lp list by using a dictionary provided. Generate the nonexisting LPs
     variable LPinfo
-    set LPinfo $LPDict
+
+    set LPinfo {}
+    set toBuildLP {}
+
+    # build dict with index as key if defined
+    dict for {name value} $LPDict {
+        dict with value {
+            if {$index >= 0} {
+                dict set LPinfo $index name   $name
+                dict set LPinfo $index type   $type
+                dict set LPinfo $index charge $charge
+                dict set LPinfo $index host1  $host1
+                dict set LPinfo $index host2  $host2
+                dict set LPinfo $index dist   $dist
+            } else {
+                dict set toBuildLP $name $value
+            }
+        }
+    }
 
     # add lone pair atoms if needed
-    set toBuildLP [dict filter $LPinfo value "*index -1*"]
     set numToBuildLP [dict size $toBuildLP]
     if {$numToBuildLP > 0} {
         set lpMol [mol new atoms $numToBuildLP]
@@ -732,14 +749,23 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
         set n [molinfo $molID get numatoms]
         set i 0
         dict for {name info} $toBuildLP {
-            dict set LPinfo $name index [expr $n + $i]
+            set newindex [expr $n + $i]
             set sel [atomselect $lpMol "index $i"]
             dict with info {
+                dict set LPinfo $newindex name   $name
+                dict set LPinfo $newindex type   $type
+                dict set LPinfo $newindex charge $charge
+                dict set LPinfo $newindex host1  $host1
+                dict set LPinfo $newindex host2  $host2
+                dict set LPinfo $newindex dist   $dist
+
                 $sel set name   $name
                 $sel set type   $type
                 $sel set charge $charge
-                $sel set beta   $penalty
                 $sel set mass   0
+                if [info exists penalty] {
+                    $sel set beta $penalty
+                }
             }
             $sel delete
             incr i
@@ -765,9 +791,152 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
     set selall  [atomselect $molID all]
     $selall set {x y z} [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate [$selnolp get {x y z}]]
 
-
     return $molID
 
+}
+#======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF { psf {resNameLimit ""} } {
+    # initialize the lp list and its hosts from psf
+
+    variable LPinfo
+
+    set LPinfo {}
+
+    set fp [open $psf r]
+    set lines [split [read $fp] "\n"]
+    close $fp
+
+    set distances {}
+    set nhosts {}
+    set nrec -1
+    set mode header
+    foreach line $lines {
+        switch $mode {
+            header {
+                # find if the psffile is in extended mode
+                if {[lindex $line 1] eq "EXT"} {
+                    set charmmext true
+                } else {
+                    set charmmext false
+                }
+                set mode findatom
+            }
+            findatom {
+                # Look for the NATOM
+                if {[string first "NATOM" $line] >= 0} {
+                    set nrec [lindex $line 0]
+                    set index 0
+
+                    set mode readatom
+                }
+            }
+            readatom {
+                # read atom info
+                set rc [scan $line "%d %8s %8s %8s %8s %8s %lf %lf %d" \
+                    num segname resid resname name atype charge mass lpd]
+
+                # psfgen checked if an atom is lone pair by checking if $lpd is -1, 
+                # but NAMD disregard it and check if atom is massless
+                # Sticking with NAMD's interpretation
+
+                # Mass: smallest possible mass reresented in psf
+                # Resname: equal to the requirement if set
+                if {$mass < 1E-4 && ("$resNameLimit" eq "" || "$resname" eq "$resNameLimit")} {
+                    set lpindex [expr $num - 1]
+                    dict set LPinfo $lpindex name   $name
+                    dict set LPinfo $lpindex type   $atype
+                    dict set LPinfo $lpindex charge $charge
+                }
+
+                incr index
+                if {$index >= $nrec} {
+                    set mode findnumlp
+                }
+            }
+            findnumlp {
+                # Look for the NUMLP
+                if {[string first "NUMLP" $line] >= 0} {
+                    set nrec [lindex $line 0]
+                    set nent [lindex $line 1]
+                    set index 0
+
+                    set mode readnumlp
+                }
+            }
+            readnumlp {
+                # read lonepair info
+                set rc [scan $line "%d %d %s %f %f %f" nhost lpindex type dist ang dih]
+                if {$rc != 6} {
+                    # TODO: proper error msg
+                    puts "BAD LONE PAIR LINE IN PSF FILE"
+                    return
+                }
+
+                # print warning if not colinear LP
+                if {$nhost != 2} {
+                    # TODO: proper error msg
+                    puts "not colinear!"
+                }
+
+                lappend distances $dist
+                lappend nhosts    $nhost
+
+                incr index
+                if {$index >= $nrec} {
+                    set etype 0
+                    set index 0
+                    set entry_i 0
+
+                    set mode readLPEntries
+                }
+            }
+            readLPEntries {
+                # each line has 8 entries max
+                for {set i 0} {$i < 8} {incr i} {
+                    set x [expr [lindex $line $i] - 1]
+                    switch $etype {
+                        0 {
+                            if {[dict exists $LPinfo $x]} {
+                                set lpindex $x
+                                dict set LPinfo $lpindex dist [lindex $distances $index]
+                            } else {
+                                set lpindex ""
+                            }
+                        }
+                        1 {
+                            if {$lpindex ne ""} {
+                                dict set LPinfo $lpindex host1 $x
+                            }
+                        }
+                        2 {
+                            if {$lpindex ne ""} {
+                                dict set LPinfo $lpindex host2 $x
+                            }
+                        }
+                        default {
+                            # do nth for host3 or more
+                        }
+                    }
+
+                    incr entry_i
+                    if {$entry_i >= $nent} {
+                        set mode quit
+                        break
+                    }
+
+                    # if read all entries for this lp, reset
+                    if {$etype >= [lindex $nhosts $index]} {
+                        set etype 0
+                    } else {
+                        incr etype
+                    }
+                }
+            }
+            quit {
+                break
+            }
+        }
+    }
 }
 #======================================================
 # !!!WARNING!!!! OUTDATED! WONT WORK!
@@ -809,13 +978,20 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID {resName ""} } {
     return $num
 }
 #======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::isLP { index } {
+    # return if the atom is a lone pair particle
+
+    variable LPinfo
+    return [expr [info exists LPinfo] && [dict exists $LPinfo $index]]
+}
+#======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
     # generate lone pair position on QMcoords
 
     variable LPinfo
 
-    dict for {name info} $LPinfo {
-        dict with info {
+    dict for {index value} $LPinfo {
+        dict with value {
             set xyz_h1 [lindex $coords $host1]
             set xyz_h2 [lindex $coords $host2]
 
@@ -922,12 +1098,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
         close $fp_in
 
         # get lone pair indices
-        set lp_indices {}
-        dict for {name value} $LPinfo {
-            dict with value {
-                lappend lp_indices $index
-            }
-        }
+        set lp_indices [dict keys $LPinfo]
         set lp_indices [lsort -integer $lp_indices]
 
         set fp_out [open "tmp.psf" w]
@@ -939,7 +1110,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
                     puts $fp_out $line
 
                     # find if the psffile is in extended mode
-                    if {[lindex $line 1] == "EXT"} {
+                    if {[lindex $line 1] eq "EXT"} {
                         set charmmext true
                     } else {
                         set charmmext false
@@ -991,7 +1162,6 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
                     if {[string first "NUMLP" $line] >= 0} {
                         set nrec [lindex $line 0]
                         set index 0
-                        set lpi 0
 
                         # discard the existing NUMLP entries
                         # in case in the future atomselect can write NUMLP entries
@@ -1020,7 +1190,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
         set n [dict size $LPinfo]
         puts $fp_out [format "%8d %8d !NUMLP NUMLPH" $n [expr $n*3]]
 
-        dict for {name info} $LPinfo {
+        dict for {index info} $LPinfo {
             set i 1
             dict with info {
                 # 2 hosts, index, F, distance, angle, dihedral
@@ -1030,7 +1200,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
         }
 
         set i 1
-        dict for {name info} $LPinfo {
+        dict for {index info} $LPinfo {
             dict with info {
                 foreach var {index host1 host2} {
                     # newline every 8 entries
@@ -1105,7 +1275,7 @@ proc ::ForceFieldToolKit::SharedFcns::checkElementPDB {} {
     set flag 0
     foreach auxAtom [[atomselect top all] get index] {
         set at [atomselect top "index $auxAtom"]
-        if { [$at get element] == "X" } {
+        if { [$at get element] == "X" && ![::ForceFieldToolKit::SharedFcns::LonePair::isLP $auxAtom]} {
              ::TopoTools::guessatomdata $at element mass
 	     set flag 1
         }

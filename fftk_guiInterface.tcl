@@ -1231,6 +1231,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # ----------
     # build the io elements
     ttk::labelframe $gopt.io -labelanchor nw -padding $labelFrameInternalPadding -text "Input/Output"
+    ttk::label $gopt.io.psfLbl -text "Input PSF File:" -anchor center
+    ttk::entry $gopt.io.psf -textvariable ::ForceFieldToolKit::GeomOpt::psf
+    ttk::button $gopt.io.psfBrowse -text "Browse"   \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select a PSF File" -filetypes $::ForceFieldToolKit::gui::psfType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::psf $tempfile }
+        }
     ttk::label $gopt.io.pdbLbl -text "Input PDB File:" -anchor center
     ttk::entry $gopt.io.pdb -textvariable ::ForceFieldToolKit::GeomOpt::pdb
     ttk::button $gopt.io.pdbBrowse -text "Browse"   \
@@ -1249,12 +1256,15 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gopt.io -column 0 -row 0 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $gopt.io 1 -weight 1
 
-    grid $gopt.io.pdbLbl -column 0 -row 0 -sticky nswe
-    grid $gopt.io.pdb -column 1 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $gopt.io.pdbBrowse -column 2 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $gopt.io.comLbl -column 0 -row 1 -sticky nswe
-    grid $gopt.io.com -column 1 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $gopt.io.comSaveAs -column 2 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $gopt.io.psfLbl    -column 0 -row 0 -sticky nswe
+    grid $gopt.io.psf       -column 1 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.io.psfBrowse -column 2 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $gopt.io.pdbLbl    -column 0 -row 1 -sticky nswe
+    grid $gopt.io.pdb       -column 1 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.io.pdbBrowse -column 2 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $gopt.io.comLbl    -column 0 -row 2 -sticky nswe
+    grid $gopt.io.com       -column 1 -row 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.io.comSaveAs -column 2 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
 
     # QM Settings
     # -----------------
@@ -1318,6 +1328,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # --------------
     # build update section
     ttk::labelframe $gopt.update -labelanchor nw -padding $labelFrameInternalPadding -text "Write Updated PDB"
+    ttk::label $gopt.update.psfLbl -text "Input PSF File:" -anchor center
+    ttk::entry $gopt.update.psf -textvariable ::ForceFieldToolKit::GeomOpt::psf
+    ttk::button $gopt.update.psfBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select a PSF File" -filetypes $::ForceFieldToolKit::gui::psfType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::psf $tempfile }
+        }
     ttk::label $gopt.update.pdbLbl -text "Original PDB File:" -anchor center
     ttk::entry $gopt.update.pdb -textvariable ::ForceFieldToolKit::GeomOpt::pdb
     ttk::button $gopt.update.pdbBrowse -text "Browse" \
@@ -1344,15 +1361,18 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gopt.update -column 0 -row 4 -sticky nswe
     grid columnconfigure $gopt.update 1 -weight 1
     grid rowconfigure $gopt.update {0 1 2} -uniform ct1
-    grid $gopt.update.pdbLbl -column 0 -row 0 -sticky nswe
-    grid $gopt.update.pdb -column 1 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $gopt.update.pdbBrowse -column 2 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
-    grid $gopt.update.logLbl -column 0 -row 1 -sticky nswe
-    grid $gopt.update.log -column 1 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $gopt.update.logBrowse -column 2 -row 1 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
-    grid $gopt.update.outPdbLbl -column 0 -row 2 -sticky nswe
-    grid $gopt.update.outPdb -column 1 -row 2 -sticky nswe -padx $entryPadX -pady $entryPadY
-    grid $gopt.update.outPdbSaveAs -column 2 -row 2 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gopt.update.psfLbl    -column 0 -row 0 -sticky nswe
+    grid $gopt.update.psf       -column 1 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.update.psfBrowse -column 2 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gopt.update.pdbLbl    -column 0 -row 1 -sticky nswe
+    grid $gopt.update.pdb       -column 1 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.update.pdbBrowse -column 2 -row 1 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gopt.update.logLbl    -column 0 -row 2 -sticky nswe
+    grid $gopt.update.log       -column 1 -row 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.update.logBrowse -column 2 -row 2 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $gopt.update.outPdbLbl -column 0 -row 3 -sticky nswe
+    grid $gopt.update.outPdb    -column 1 -row 3 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $gopt.update.outPdbSaveAs -column 2 -row 3 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
 
     # build update buttons
     ttk::frame $gopt.runUpdate
