@@ -543,7 +543,7 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set angList [topo getanglelist -molid $cmpdMolID]
     set dihList [topo getdihedrallist -molid $cmpdMolID]
     set imprpList [topo getimproperlist -molid $cmpdMolID]
-    ::ForceFieldToolKit::SharedFcns::LonePair::init $cmpdMolID $resName
+    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psfPath $resName
 
     $sel delete
 

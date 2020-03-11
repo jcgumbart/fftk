@@ -490,7 +490,7 @@ puts $debugLog
     # patch lone pair
     set molID [mol new $psf]
     mol addfile $pdb
-    set lp_num [::ForceFieldToolKit::SharedFcns::LonePair::init $molID]
+    set lp_num [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
     if {$lp_num > 0} {
         for {set i 0} { $i < [llength $QMdata] } { incr i } {
             set QMcoords [lindex $QMdata $i 3]

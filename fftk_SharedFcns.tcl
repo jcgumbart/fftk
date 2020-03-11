@@ -937,45 +937,8 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF { psf {resNameLimit 
             }
         }
     }
-}
-#======================================================
-# !!!WARNING!!!! OUTDATED! WONT WORK!
-# TODO: rewrite to init from PSF and use dictionary
-proc ::ForceFieldToolKit::SharedFcns::LonePair::init { molID {resName ""} } {
-    # initialize the lp list and its hosts and its distance from host1
 
-    variable index
-    variable host1
-    variable host2
-    variable dist
-
-    # get LP hosts and measure dist from 1st host
-    # TODO: The safest way should be read from psf, but here we just assume:
-    # TODO:   1) LP is massless and linked to one and only one atom
-    # TODO:   2) LP first host only link to one atom as well (true for normal halogens)
-    if {$resName eq ""} {
-        set lp [atomselect $molID "mass <= 0"]
-    } else {
-        set lp [atomselect $molID "mass <= 0 and resname $resName"]
-    }
-
-    set num   [$lp num]
-    set index [$lp list]
-    set host1 [$lp getbonds]
-    set host2 {}
-    set dist {}
-    foreach i $index h1 $host1 {
-        set as_h1 [atomselect $molID "index $h1"]
-        set bonds [$as_h1 getbonds]
-        set idx [lsearch {*}$bonds $i]
-        lappend host2 [lreplace {*}$bonds $idx $idx]
-        $as_h1 delete
-
-        lappend dist [measure bond [list $i $h1]]
-    }
-    $lp delete
-
-    return $num
+    return [dict size $LPinfo]
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::isLP { index } {
