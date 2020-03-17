@@ -1230,7 +1230,7 @@ proc ::ForceFieldToolKit::gui::gzmAutoDetect {} {
 
     # add all heavy atoms with less than 4 bonded atoms (generally tetrahedral)
     set ::ForceFieldToolKit::GenZMatrix::accList {}
-    set selHeavyAtoms [atomselect top "all and not element H"]
+    set selHeavyAtoms [atomselect top "mass >= 0.0001 and not element H"]
     foreach hvyatom [$selHeavyAtoms get index] {
         set sel [atomselect top "index $hvyatom"]
         if { [llength [lindex [$sel getbonds] 0]] < 4 } {

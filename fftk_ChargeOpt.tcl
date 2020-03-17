@@ -530,7 +530,7 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set propList {name type charge element resid resname mass x y z chain segname}
     
     # compile cmpd info
-    set cmpdMolID [mol new $psfPath]
+    set cmpdMolID [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psfPath $resName]
     mol addfile $pdbPath waitfor all $cmpdMolID
     # reTypeFromPSF / reChargeFromPSF have been depreciated 
     # ::ForceFieldToolKit::SharedFcns::reTypeFromPSF $psfPath $cmpdMolID
@@ -543,7 +543,6 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
     set angList [topo getanglelist -molid $cmpdMolID]
     set dihList [topo getdihedrallist -molid $cmpdMolID]
     set imprpList [topo getimproperlist -molid $cmpdMolID]
-    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psfPath $resName
 
     $sel delete
 

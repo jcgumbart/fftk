@@ -360,7 +360,7 @@ proc ::ForceFieldToolKit::BondAngleOpt::optimize {} {
         ::ForceFieldToolKit::BondAngleOpt::printSettings $debugLog; flush $debugLog
     }
 
-    set hessLogID [::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP $psf $pdb]
+    set hessLogID [::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $psf $pdb]
     set zmatqm [::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::zmatqm_BondAngleOpt $debug $debugLog $hessLogID $hessLog ]
 #    set tmpVar [::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::zmatqm_BondAngleOpt $debug $debugLog $psf $hessLog ]
 #    set zmatqm [lindex $tmpVar 0]

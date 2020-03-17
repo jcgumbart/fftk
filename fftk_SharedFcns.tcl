@@ -841,7 +841,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF { psf {resNameLimit 
 
                 # Mass: smallest possible mass reresented in psf
                 # Resname: equal to the requirement if set
-                if {$mass < 1E-4 && ("$resNameLimit" eq "" || "$resname" eq "$resNameLimit")} {
+                if {$mass < 0.0001 && ("$resNameLimit" eq "" || "$resname" eq "$resNameLimit")} {
                     set lpindex [expr $num - 1]
                     dict set LPinfo $lpindex name   $name
                     dict set LPinfo $lpindex type   $atype
@@ -938,14 +938,29 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF { psf {resNameLimit 
         }
     }
 
-    return [dict size $LPinfo]
+    return [mol new $psf]
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::isLP { index } {
     # return if the atom is a lone pair particle
 
     variable LPinfo
-    return [expr [info exists LPinfo] && [dict exists $LPinfo $index]]
+    if {[info exists LPinfo]} {
+        return [dict exists $LPinfo $index]
+    } else {
+        return false
+    }
+}
+#======================================================
+proc ::ForceFieldToolKit::SharedFcns::LonePair::numLP { } {
+    # return the number of lonepairs
+
+    variable LPinfo
+    if {[info exists LPinfo]} {
+        return [dict size $LPinfo]
+    } else {
+        return 0
+    }
 }
 #======================================================
 proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
@@ -968,7 +983,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate { coords } {
     return $coords
 }
 #======================================================
-proc ::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP { psf pdb } {
+proc ::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP { psf pdb } {
     # generate a psf wihtout lone pair
     
     set molID [mol new $psf]

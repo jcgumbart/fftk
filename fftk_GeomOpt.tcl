@@ -142,7 +142,7 @@ proc ::ForceFieldToolKit::GeomOpt::writeComFile {} {
     if { ![::ForceFieldToolKit::GeomOpt::sanityCheck] } { return }
 
     # load structure
-    set molID [::ForceFieldToolKit::SharedFcns::LonePair::loadPSFwithNoLP $psf $pdb]
+    set molID [::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $psf $pdb]
 
     # NEW 02/01/2019: Checking "element" is defined
     ::ForceFieldToolKit::SharedFcns::checkElementPDB
@@ -185,8 +185,7 @@ proc ::ForceFieldToolKit::GeomOpt::loadLogFile {} {
     if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $logFile]} {return}
 
     # load structure
-    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf
-    set molID [mol new $psf]
+    set molID [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
     mol addfile $pdb
 
     # call procedure to load output file from QM geometry optimization
@@ -227,10 +226,8 @@ proc ::ForceFieldToolKit::GeomOpt::writeOptPDB {} {
         return
     }
     
-    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf
-
     # call procedure to write the optimized file as a new PDB file
-    ::ForceFieldToolKit::${qmSoft}::writePDBGeomOpt $pdb $logFile $optPdb
+    ::ForceFieldToolKit::${qmSoft}::writePDBGeomOpt $psf $pdb $logFile $optPdb
     
     # message the console
     ::ForceFieldToolKit::gui::consoleMessage "Optimized geometry written to PDB file"

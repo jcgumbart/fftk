@@ -96,11 +96,12 @@ proc ::ForceFieldToolKit::ORCA::readOutGeomOpt { pdb logFile {final "false"}} {
 
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::ORCA::writePDBGeomOpt { pdb logFile optPdb } {
+proc ::ForceFieldToolKit::ORCA::writePDBGeomOpt { psf pdb logFile optPdb } {
     # write the optimized structure to as new PDB file
 
     # load the pdb and load the coords from the log file
-    set molId [mol new $pdb]
+    set molId [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
+    mol addfile $pdb
 
     # NEW 02/01/2019: Checking "element" is defined
     ::ForceFieldToolKit::SharedFcns::checkElementPDB

@@ -1496,7 +1496,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
                 tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PDB file."
                 return
             }
-            mol new $::ForceFieldToolKit::GenZMatrix::psfPath
+            ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $::ForceFieldToolKit::GenZMatrix::psfPath $::ForceFieldToolKit::GenZMatrix::basename
             mol addfile $::ForceFieldToolKit::Configuration::geomOptPDB
             ::ForceFieldToolKit::gui::consoleMessage "PSF/PDB loaded (Water Int.)"
         }
