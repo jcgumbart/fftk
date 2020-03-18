@@ -1622,8 +1622,10 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 #               ::ForceFieldToolKit::ORCA::tempORCAmessage
 #               return
 #            }
+        set molID [::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $::ForceFieldToolKit::GenZMatrix::psfPath $::ForceFieldToolKit::Configuration::geomOptPDB]
         ::ForceFieldToolKit::GenZMatrix::genZmatrix
         ::ForceFieldToolKit::GenZMatrix::writeSPfiles
+        mol delete $molID
     }
     ttk::button $gzm.run.loadCOM -text "Load QM Input Files" \
         -command {

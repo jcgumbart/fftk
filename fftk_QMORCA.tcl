@@ -254,6 +254,7 @@ proc ::ForceFieldToolKit::ORCA::auxXYZwriter { gauFile outname } {
     ::QMtool::load_file $gauFile com
 
     # File loaded to VMD
+    # TODO: BUG two character elements are trimmed into one
     set xyzList [[atomselect top "not atomicnumber 0"] get index]
     set xyzSize [llength $xyzList] 
     foreach ind [lrange $xyzList 0 [expr {$xyzSize - 4} ]] { ;# Loop only the molecule index. Fragment (1).
