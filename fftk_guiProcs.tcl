@@ -1331,8 +1331,8 @@ proc ::ForceFieldToolKit::gui::coptGuessChargeGroups { molid } {
     set cgUpBound {}
 
 
-    # set the list of all atoms
-    set allList [lsort -dictionary [[atomselect $molid all] get index]]
+    # set the list of all non LP atoms
+    set allList [lsort -dictionary [[atomselect $molid "mass > 0"] get index]]
 
     # cycle through each atom as the root
     foreach rootAtom $allList {
@@ -1750,7 +1750,7 @@ proc ::ForceFieldToolKit::gui::coptWriteNewPSF {} {
     }
 
     # reload the PSF/PDB file pair
-    mol new $::ForceFieldToolKit::ChargeOpt::psfPath
+    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $::ForceFieldToolKit::ChargeOpt::psfPath
     mol addfile $::ForceFieldToolKit::Configuration::geomOptPDB
 
     # reType/reCharge, taking into account reChargeOverride settings (if set)
@@ -1785,7 +1785,7 @@ proc ::ForceFieldToolKit::gui::coptWriteNewPSF {} {
     }
 
     # write the psf file
-    [atomselect top all] writepsf $::ForceFieldToolKit::gui::coptPSFNewPath
+    ::ForceFieldToolKit::SharedFcns::LonePair::writePSF top $::ForceFieldToolKit::gui::coptPSFNewPath
 
     # cleanup
     mol delete top
