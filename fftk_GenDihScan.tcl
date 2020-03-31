@@ -706,7 +706,7 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::setup {logList} {
     }
 
     # load coordinates into VMD
-    set molid [mol new $psf waitfor all]
+    set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
     set aCount [molinfo top get numatoms]
 
     # cycle through each log file
@@ -742,11 +742,10 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::setup {logList} {
             lappend ydata $en
 
             # move coordinates for each atom
-            for {set j 0} {$j < $aCount} {incr j} {
-                set sel [atomselect $molid "index $j"]
-                $sel set {x y z} [list [lindex $log 2 $i $j]]
-                $sel delete
-            }
+            set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate [lindex $log 2 $i]]
+            set sel [atomselect $molid all]
+            $sel set {x y z} $coords
+            $sel delete
         }
 
         # add data to the plot

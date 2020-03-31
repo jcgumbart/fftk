@@ -235,6 +235,9 @@ proc ::ForceFieldToolKit::Distortion::distort_angle {ind0 ind1 ind2 dx frame} {
       set pos1 [join [$sel1 get {x y z}]]
       set sel2 [atomselect top "index $ind2"]
       set pos2 [join [$sel2 get {x y z}]]
+      $sel0 delete
+      $sel1 delete
+      $sel2 delete
 
       # Displacement will be along the sum of the bond vectors
       set bonddir10 [vecnorm [vecsub $pos1 $pos0]] 
@@ -367,6 +370,9 @@ proc ::ForceFieldToolKit::Distortion::create_distorted_frames_angle {molid frame
    set pos1 [join [$sel1 get {x y z}]]
    set sel2 [atomselect top "index $ind2"]
    set pos2 [join [$sel2 get {x y z}]]
+   $sel0 delete
+   $sel1 delete
+   $sel2 delete
 
    # need to cut angle in half
    set delta [expr $delta/2.0]

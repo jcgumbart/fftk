@@ -52,11 +52,10 @@ proc ::ForceFieldToolKit::ORCA::writeComGeomOpt { molID com qmProc qmMem qmCharg
 
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::ORCA::readOutGeomOpt { pdb logFile {final "false"}} {
+proc ::ForceFieldToolKit::ORCA::readOutGeomOpt { molId logFile {final "false"}} {
     # load output file from geometry optimization
 
-    # load the pdb file, followed by the coordinates from gaussian log
-    set molId [mol new $pdb]
+    # load the coordinates from ORCA log
     set inFile [open $logFile r]
 
     while { ![eof $inFile] } {
@@ -69,15 +68,13 @@ proc ::ForceFieldToolKit::ORCA::readOutGeomOpt { pdb logFile {final "false"}} {
             while { ![string match "" [set inLine [string trim [gets $inFile]]]] } {
                 lappend coords [lrange $inLine 1 3]
             }
+            set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $coords]
+
             # add a new frame, set the coords 
-            mol addfile $pdb
-            for {set i 0} {$i < [llength $coords]} {incr i} {
-                set temp [atomselect $molId "index $i"]
-                $temp set x [lindex $coords $i 0]
-                $temp set y [lindex $coords $i 1]
-                $temp set z [lindex $coords $i 2]
-                $temp delete
-            }
+            animate dup $molId
+            set temp [atomselect $molId all]
+            $temp set {x y z} $coords
+            $temp delete
             unset coords
         } else {
             continue
@@ -1098,8 +1095,11 @@ proc ::ForceFieldToolKit::ORCA::WriteComFile_GenBonded { geomCHK com qmProc qmMe
     # make sure qmSoft variable is set to the right value for the selected output file
     if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $geomCHK]} {return}
 
+    set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
+    mol addfile $pdb
+
     # NEW 02/26/2019: Use readOutGeomOpt to get optimized geometry
-    set newid [::ForceFieldToolKit::ORCA::readOutGeomOpt $pdb $geomCHK "true"]
+    set newid [::ForceFieldToolKit::ORCA::readOutGeomOpt $molid $geomCHK "true"]
 
     #Load optimized pdb
     # set newid [mol new $pdb]
@@ -1108,7 +1108,7 @@ proc ::ForceFieldToolKit::ORCA::WriteComFile_GenBonded { geomCHK com qmProc qmMe
     ::ForceFieldToolKit::SharedFcns::checkElementPDB
 
     #Set auxiliar list for xyz coordinates
-    set xyzList [[atomselect $newid all] get index] 
+    set xyzList [[atomselect $newid "mass > 0"] get index]]
 
     #Open the output inp file
     # set com $::ForceFieldToolKit::GenBonded::com
@@ -1332,7 +1332,8 @@ proc ::ForceFieldToolKit::ORCA::resetDefaultsGenBonded {} {
 
 proc ::ForceFieldToolKit::ORCA::buildFiles_GenDihScan { dihData outPath basename qmProc qmCharge qmMem qmMult qmRoute psf pdb } {
 
-    mol new $psf; mol addfile $pdb
+    ::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $psf $pdb
+    #mol new $psf; mol addfile $pdb
     # NEW 02/01/2019:
     ::ForceFieldToolKit::SharedFcns::checkElementPDB
 

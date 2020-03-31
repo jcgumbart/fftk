@@ -1059,8 +1059,7 @@ proc ::ForceFieldToolKit::Gaussian::WriteComFile_GenBonded { geomCHK com qmProc 
     }
 
     # load the molecule psf/pdb to get the internal coordinates
-    set logID [mol new $psf]
-    mol addfile $pdb $logID
+    set logID [::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $psf $pdb]
     ::QMtool::use_vmd_molecule $logID
     set zmat [::QMtool::modredundant_zmat]
     
@@ -1183,7 +1182,8 @@ proc ::ForceFieldToolKit::Gaussian::resetDefaultsGenBonded {} {
 proc ::ForceFieldToolKit::Gaussian::buildFiles_GenDihScan { dihData outPath basename qmProc qmCharge qmMem qmMult qmRoute psf pdb } {
 
     # assign Gaussian atom names and gather x,y,z for output com file
-    mol new $psf; mol addfile $pdb
+    ::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $psf $pdb
+    #mol new $psf; mol addfile $pdb
 
     # NEW 02/01/2019:
     ::ForceFieldToolKit::SharedFcns::checkElementPDB

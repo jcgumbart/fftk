@@ -1358,7 +1358,7 @@ proc ::ForceFieldToolKit::DihOpt::vmdLoadQMData { psfFile pdbFile GlogData } {
     variable debugLog
 
     # load the PSF file to which frames will be added
-    mol new $psfFile
+    ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psfFile
 
     # cycle through each optimized structure, add a file
     foreach optStruct $GlogData {
@@ -1368,20 +1368,17 @@ proc ::ForceFieldToolKit::DihOpt::vmdLoadQMData { psfFile pdbFile GlogData } {
 
         # make sure that the number of atoms in the pdb file matches the number
         # of atoms in the GlogData
-        set atomCount [molinfo top get numatoms]
+        set atomCount [expr [molinfo top get numatoms] - [::ForceFieldToolKit::SharedFcns::LonePair::numLP]]
         if { [llength [lindex $optStruct 3]] != $atomCount } {
             if { $debug } {puts $debugLog "ERROR: number of atoms in template PDB file does not match QM output coordinate set"; flush $debugLog }
             error "ERROR: number of atoms in template PDB file does not match QM output coordinate set"
         }
 
         # move each atom to GlodData coordinates
-        for {set i 0} {$i < $atomCount} {incr i} {
-            set currAtomSel [atomselect top "index $i"]
-            $currAtomSel set x [lindex $optStruct 3 $i 0]
-            $currAtomSel set y [lindex $optStruct 3 $i 1]
-            $currAtomSel set z [lindex $optStruct 3 $i 2]
-
-        }
+        set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate [lindex $optStruct 3] ]
+        set currAtomSel [atomselect top all]
+        $currAtomSel set {x y z} $coords
+        $currAtomSel delete
 
     }; # end of optimized structures to load (foreach)
 
