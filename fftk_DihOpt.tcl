@@ -1368,14 +1368,14 @@ proc ::ForceFieldToolKit::DihOpt::vmdLoadQMData { psfFile pdbFile GlogData } {
 
         # make sure that the number of atoms in the pdb file matches the number
         # of atoms in the GlogData
-        set atomCount [expr [molinfo top get numatoms] - [::ForceFieldToolKit::SharedFcns::LonePair::numLP]]
+        set atomCount [molinfo top get numatoms]
         if { [llength [lindex $optStruct 3]] != $atomCount } {
             if { $debug } {puts $debugLog "ERROR: number of atoms in template PDB file does not match QM output coordinate set"; flush $debugLog }
             error "ERROR: number of atoms in template PDB file does not match QM output coordinate set"
         }
 
         # move each atom to GlodData coordinates
-        set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate [lindex $optStruct 3] ]
+        set coords [lindex $optStruct 3]
         set currAtomSel [atomselect top all]
         $currAtomSel set {x y z} $coords
         $currAtomSel delete

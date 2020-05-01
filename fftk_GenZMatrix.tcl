@@ -165,6 +165,7 @@ proc ::ForceFieldToolKit::GenZMatrix::genZmatrix {} {
     # run sanity check
     if { ![::ForceFieldToolKit::GenZMatrix::sanityCheck] } { return }
 
+    # TODO: write perpendicular QM scan file for halogen
     ::ForceFieldToolKit::${qmSoft}::genZmatrix $outFolderPath $basename $donList $accList $qmProc $qmMem $qmRoute $qmCharge $qmMult 
     
 }
