@@ -142,11 +142,7 @@ proc ::ForceFieldToolKit::SharedFcns::readParFile { parFile } {
             {^END.*} { break }
             default {
                 set prmData [lindex [split $inLine \!] 0]
-                if { [string trim [lindex [split $inLine \!] 1]] ne "" } {
-                    set prmComment "\! [string trim [lindex [split $inLine \!] 1]]"                
-                } else {
-                    set prmComment {}
-                }
+                set prmComment [string trim [lindex [split $inLine \!] 1]]
 
                 switch -exact $readstate {
                     0 { continue }
@@ -403,8 +399,8 @@ proc ::ForceFieldToolKit::SharedFcns::writeParFile { pars filename } {
         set at3 [lindex $imprDef 0 2]
         set at4 [lindex $imprDef 0 3]
         set kpsi [lindex $imprDef 1 0]
-        set n [lindex $imprDef 1 1]
-        set psi0 [lindex $imprDef 1 2]
+        set n 0
+        set psi0 [lindex $imprDef 1 1]
         if { $psi0 ne "" } { set psi0 [format %.2f $psi0] }
         set comment [lindex $imprDef 2]
         puts $outFile "[format %-*s $d1max $at1]  [format %-*s $d2max $at2]  [format %-*s $d3max $at3]  [format %-*s $d4max $at4]  [format %-7s [format %.4f $kpsi]]  [format %-1s $n]  [format %-5s $psi0]  ! $comment"
