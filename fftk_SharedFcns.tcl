@@ -787,6 +787,13 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
     set selall  [atomselect $molID all]
     $selall set {x y z} [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate [$selnolp get {x y z}]]
 
+    # add bond
+    dict for {index value} $LPinfo {
+        dict with value {
+            topo addbond $index $host1
+        }
+    }
+
     return $molID
 
 }
