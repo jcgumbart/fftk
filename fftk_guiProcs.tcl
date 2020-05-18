@@ -1410,12 +1410,12 @@ proc ::ForceFieldToolKit::gui::coptGuessChargeGroups { molid } {
     # remove duplicate matches
     set cgInd [lsort -dictionary -unique $cgInd]
 
-    # if charge group is HA (non-polar hydrogens) or LPH (lone pair for halogens) then remove them
+    # if charge group is HGA1-3 / HA (non-polar hydrogens) or LPH (lone pair for halogens) then remove them
     # work from end to beginning so that items can be removed without shifting contents
     for {set i [expr {[llength $cgInd] - 1}] } {$i >= 0} {incr i -1} {
         set atomInd [lindex [lindex $cgInd $i] 0]
         set atomType [[atomselect $molid "index $atomInd"] get type]
-        if { $atomType eq "HA" || $atomType eq "LPH" } {
+        if { [string match {HGA[1-3]} $atomType] || $atomType eq "HA" || $atomType eq "LPH" } {
             set cgInd [lreplace $cgInd $i $i]
         }
     }
