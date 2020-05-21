@@ -1024,14 +1024,14 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
   # 1) LP has 0 mass and follows parent atoms (the "LP hosts", in this case CL and C6)
   #
   # 2) bond between LP and parent should be optional in the bonds section, but
-  #    this might be necessary * for building migration groups properly?
+  #    this might be necessary for building migration groups properly?
   #
   # 3) no angles, dihedrals, etc. should contain LP, this might just be because those
-  #    types are not * defined
+  #    types are not defined
 
   # 4) the new "!NUMLP NUMLPH" section in the PSF should exist. The presence of
-  #    this section * automatically toggles the now deprecated "lonepairs on"
-  #    keyword and is also required for "drude * on". Format is as follows:
+  #    this section automatically toggles the now deprecated "lonepairs on"
+  #    keyword and is also required for "drude on". Format is as follows:
   # =========
   # <# of lonepairs> <# of lonepairs + # of lphosts> !NUMLP NUMLPH
   # .
@@ -1044,24 +1044,24 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
   # ==========
 
   # Note the mislabeling of NUMLPH in the comment, the actual number of hosts is
-  # the second number * minus the first.
+  # the second number minus the first.
 
   # For each entry, a collinear lonepair has 2 hosts and a bisectory has 3. I
-  # forget what F mean * ("fixed"?) this is the only option I've seen and the
-  # only one NAMD accepts. All entries require a * <distance>, <angle>, <dihedral>
-  # specification. For collinear lonepairs dihedral is read, but * ignored. <angle>
+  # forget what F mean ("fixed"?) this is the only option I've seen and the
+  # only one NAMD accepts. All entries require a <distance>, <angle>, <dihedral>
+  # specification. For collinear lonepairs dihedral is read, but ignored. <angle>
   # is interpreted as a scale parameter that shifts the origin for the colinear x distance
   # back along the bond between the parent atom and the other host. A value of 0.0 means
-  # that * the origin of the distance is the parent atom.
+  # that the origin of the distance is the parent atom.
   #
   # The lonepairs are essentially double indexed (starting at one in Fortran style),
-  # once as an atom * and again within the list of lonepairs and hosts. So for the example,
-  # the first lonepair has index * 1, which refers to the 13, which is the lonepair
-  # atom index. The 2 for that entry indicates two * extra host entries (12 and 11,
-  # lonepair indices 2 and 3) and because it is collinear, the lonepair * is bound to atom 12.
+  # once as an atom and again within the list of lonepairs and hosts. So for the example,
+  # the first lonepair has index 1, which refers to the 13, which is the lonepair
+  # atom index. The 2 for that entry indicates two extra host entries (12 and 11,
+  # lonepair indices 2 and 3) and because it is collinear, the lonepair is bound to atom 12.
 
   # An additional lonepair would have index 4, add either 2 or 3 more hosts to the
-  # index list and thus * add 3 or 4 more entries. The index list should wrap to the
+  # index list and thus add 3 or 4 more entries. The index list should wrap to the
   # next line after every 8 entries.
   # Example, lets add two 5 point SWM4 waters with bisector lonepairs after the chorobenzene.
   # The new section would be:
@@ -1171,8 +1171,8 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
         set n [dict size $LPinfo]
         puts $fp_out [format "%8d %8d !NUMLP NUMLPH" $n [expr $n*3]]
 
+        set i 1
         dict for {index info} $LPinfo {
-            set i 1
             dict with info {
                 # 2 hosts, index, F, distance, angle, dihedral
                 puts $fp_out [format "%8d %8d %-6s %10.4f %10.4f %10.4f" 2 $i "F" $dist 0 0]
