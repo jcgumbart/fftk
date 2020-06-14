@@ -658,14 +658,15 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
         }
     }
     
-    if {[info exists LPDict]} {
-        set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromDict $molid $LPDict]
-    }
-
     topo guessangles -molid $molid
     topo guessdihedrals -molid $molid
     topo guessatom element mass
     mol reanalyze $molid
+
+    if {[info exists LPDict]} {
+        set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromDict $molid $LPDict]
+    }
+
 
     # Handle the parameter section of the stream file
     # Only currently supports bonds, angles, dihedrals, impropers

@@ -1235,7 +1235,7 @@ proc ::ForceFieldToolKit::gui::gzmAutoDetect {} {
         set sel [atomselect top "index $hvyatom"]
         if { [llength [lindex [$sel getbonds] 0]] < 4 } {
             lappend ::ForceFieldToolKit::GenZMatrix::accList $hvyatom
-            if { [$sel get element] eq "C" } {
+            if { [lsearch -exact {C Cl Br I} [$sel get element] ] >= 0} {
                 lappend ::ForceFieldToolKit::GenZMatrix::donList $hvyatom
             }
         }

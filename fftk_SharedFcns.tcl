@@ -990,11 +990,11 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP { psf pdb } {
     # generate a psf wihtout lone pair
     
     set molID [mol new $psf]
+    mol addfile $pdb
     set all [atomselect $molID all]
     set nolp [atomselect $molID "mass > 0"]
 
     if {[$all num] > [$nolp num]} {
-        mol addfile $pdb
         $nolp writepsf "nolp.psf"
         $nolp writepdb "nolp.pdb"
 
