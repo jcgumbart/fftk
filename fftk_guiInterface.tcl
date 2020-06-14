@@ -68,6 +68,13 @@ namespace eval ::ForceFieldToolKit::gui {
     variable gdsEditPlusMinus
     variable gdsEditStepSize
 
+    # GenImprScan Variables
+    variable imsAtomLabels
+    variable imsEditIndDef
+    variable imsEditEqVal
+    variable imsEditPlusMinus
+    variable imsEditStepSize
+
     # DihOpt Variables
     variable doptEditDef
     variable doptEditFC
@@ -90,6 +97,29 @@ namespace eval ::ForceFieldToolKit::gui {
     variable doptRefineEditDelta
     variable doptRefineStatus
     variable doptRefineCount
+
+    # ImprOpt Variables
+    variable imoptEditDef
+    variable imoptEditFC
+    variable imoptEditMult
+    variable imoptEditDelta
+    variable imoptStatus
+    variable imoptBuildScript
+    variable imoptQMEStatus
+    variable imoptMMEStatus
+    variable imoptImprAllStatus
+    variable imoptEditColor
+    variable imoptResultsPlotHandle
+    variable imoptResultsPlotWin
+    variable imoptResultsPlotCount
+    variable imoptP
+    variable imoptResultsPlotHandle
+#    variable imoptRefineEditDef
+#    variable imoptRefineEditFC
+#    variable imoptRefineEditMult
+#    variable imoptRefineEditDelta
+#    variable imoptRefineStatus
+#    variable imoptRefineCount
 
     # Misc Variables
     variable psfType
@@ -1522,6 +1552,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gzm.io.subcontainer1.basename    -column 0 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $gzm.io.subcontainer1.takeFromTop -column 1 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
     grid $gzm.io.subcontainer1.loadPsfPdb  -column 2 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+
 
     # HB Donor/Acceptors Section
     #---------------------------
@@ -4069,10 +4100,22 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     grid rowconfigure $baopt 7 -minsize 50
 
 
+    # --------------------------------------------------#
+    # Dih/Impr Optimization Selector             #
+    # --------------------------------------------------#
+    # create an entry for the dih/impr optimization selector (menubutton)
+    # that will be reused across several tabs
+    
+    menu $w.dihImprSelectorMenu -tearoff no
+    $w.dihImprSelectorMenu add command -label "Dihedral fitting" -command { ::ForceFieldToolKit::gui::dihImprSelectMethod "dih" } 
+    $w.dihImprSelectorMenu add command -label "Improper fitting" -command { ::ForceFieldToolKit::gui::dihImprSelectMethod "impr" }
+
 
     #---------------------------------------------------#
     #  GenDihScan tab                                   #
     #---------------------------------------------------#
+
+    # Add the dih method selector in before the pre-existing contents
 
     # build the frame, add it to the notebook
     ttk::frame $w.hlf.nb.genDihScan
@@ -4084,6 +4127,22 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # for shorter naming convention
     set gds $w.hlf.nb.genDihScan
+
+
+    # Dih/Impr Optimization Selector
+    # -----------------------------------
+    ttk::frame      $gds.dihImprSelector
+    ttk::label      $gds.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
+    ttk::menubutton $gds.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
+##    ttk::separator  $gds.dihImprSelectorSep -orient horizontal 
+
+    grid $gds.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
+    grid $gds.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
+    grid $gds.dihImprSelector.selector -column 1 -row 0 -sticky nsw
+##    grid $gds.dihImprSelectorSep -column 0 -row 1 -sticky nwe -padx $hsepPadX -pady $hsepPadY
+
+    grid columnconfigure $gds.dihImprSelector 1 -minsize 15 -weight 1
+
 
     # INPUT/OUTPUT
     # ------------
@@ -4133,10 +4192,15 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
         }
     ttk::button $gds.io.toggleAtomLabels -text "Toggle Atom Labels" -command { ::ForceFieldToolKit::gui::gdsToggleLabels }
 
+
     # grid input/output
-    grid $gds.io -column 0 -row 0 -sticky nswe
+    grid $gds.io -column 0 -row 1 -sticky nwe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $gds.io 1 -weight 1
     grid rowconfigure $gds.io {0 1 2 3} -uniform rt1
+
+#    grid $gds.io -column 0 -row 0 -sticky nswe
+#    grid columnconfigure $gds.io 1 -weight 1
+#    grid rowconfigure $gds.io {0 1 2 3} -uniform rt1
 
     grid $gds.io.psfLbl -column 0 -row 0 -sticky nswe
     grid $gds.io.psf -column 1 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
@@ -4161,7 +4225,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # build/grid a separator
     ttk::separator $gds.sep1 -orient horizontal
-    grid $gds.sep1 -column 0 -row 1 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $gds.sep1 -column 0 -row 2 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
     # DIHEDRALS TO SCAN
     # -----------------
@@ -4265,7 +4329,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
         }
 
     # grid dihedrals to scan
-    grid $gds.dihs2scan -column 0 -row 2 -sticky nswe
+    grid $gds.dihs2scan -column 0 -row 3 -sticky nswe
     grid columnconfigure $gds.dihs2scan 0 -weight 1 -minsize 150
     grid columnconfigure $gds.dihs2scan 1 -weight 1 -minsize 100
     grid columnconfigure $gds.dihs2scan 2 -weight 1 -minsize 100
@@ -4301,7 +4365,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # build/grid a separator
     ttk::separator $gds.sep2 -orient horizontal
-    grid $gds.sep2 -column 0 -row 3 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $gds.sep2 -column 0 -row 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
     # GAUSSIAN SETTINGS
     # -----------------
@@ -4326,7 +4390,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
 
     # grid QM settings
-    grid $gds.qm -column 0 -row 4 -sticky nswe
+    grid $gds.qm -column 0 -row 5 -sticky nswe
     grid rowconfigure $gds.qm {0 1} -uniform rt1
 
     grid $gds.qm.selector   -column 0 -row 0 -columnspan 5 -sticky nsw
@@ -4345,7 +4409,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # build/grid a separator
     ttk::separator $gds.sep3 -orient horizontal
-    grid $gds.sep3 -column 0 -row 5 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $gds.sep3 -column 0 -row 6 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
 
     # GENERATE
@@ -4403,13 +4467,364 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 	    }
 
     # grid generate section
-    grid $gds.generate -column 0 -row 6 -sticky nswe
+    grid $gds.generate -column 0 -row 7 -sticky nswe
     grid columnconfigure $gds.generate {0 1 2} -uniform ct1 -weight 1
     grid rowconfigure $gds.generate 0 -minsize 50
 
     grid $gds.generate.go        -column 0 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
     grid $gds.generate.load      -column 1 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
     grid $gds.generate.torexplor -column 2 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+
+
+
+    #---------------------------------------------------#
+    #  GenImprScan tab                                  #
+    #---------------------------------------------------#
+
+    # Add the dih/impr selector in before the pre-existing contents
+
+    # build the frame, add it to the notebook
+    ttk::frame $w.hlf.nb.genImprScan
+    $w.hlf.nb add $w.hlf.nb.genImprScan -text "Scan Impropers"
+    # allow frame to change width with content
+    grid columnconfigure $w.hlf.nb.genImprScan 0 -weight 1
+    # allow certain frames to gracefully change height
+    grid rowconfigure $w.hlf.nb.genImprScan {2} -weight 1
+
+    # for shorter naming convention
+    set ims $w.hlf.nb.genImprScan
+
+
+    # Dih/Impr Optimization Selector
+    # -----------------------------------
+    ttk::frame      $ims.dihImprSelector
+    ttk::label      $ims.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
+    ttk::menubutton $ims.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
+
+    grid $ims.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
+    grid $ims.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
+    grid $ims.dihImprSelector.selector -column 1 -row 0 -sticky nsw
+
+    grid columnconfigure $ims.dihImprSelector 1 -minsize 15 -weight 1
+
+
+    # INPUT/OUTPUT
+    # ------------
+    # build input/output
+    ttk::labelframe $ims.io -labelanchor nw -padding $labelFrameInternalPadding -text "Input/Output"
+    ttk::label $ims.io.psfLbl -text "PSF File:" -anchor center
+    ttk::entry $ims.io.psf -textvariable ::ForceFieldToolKit::Configuration::chargeOptPSF
+    ttk::button $ims.io.psfBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select a PSF File" -filetypes $::ForceFieldToolKit::gui::psfType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::chargeOptPSF $tempfile }
+        }
+    ttk::label $ims.io.pdbLbl -text "PDB File:" -anchor center
+    ttk::entry $ims.io.pdb -textvariable ::ForceFieldToolKit::Configuration::geomOptPDB
+    ttk::button $ims.io.pdbBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::geomOptPDB $tempfile }
+        }
+    ttk::label $ims.io.outPathLbl -text "Output Path:" -anchor center
+    ttk::entry $ims.io.outPath -textvariable ::ForceFieldToolKit::GenDihScan::outPath
+    ttk::button $ims.io.outPathBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_chooseDirectory -title "Select the Output Folder"]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GenDihScan::outPath $tempfile }
+        }
+    ttk::label $ims.io.basenameLbl -text "Basename:" -anchor center
+    ttk::frame $ims.io.bNameSub
+    ttk::entry $ims.io.bNameSub.basename -textvariable ::ForceFieldToolKit::GenDihScan::basename -width 10 -justify center
+    ttk::button $ims.io.bNameSub.takeFromTop -text "Basename from TOP" \
+        -command {
+            if { [llength [molinfo list]] == 0 } {
+                tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "No PSF/PDBs loaded in VMD."
+                return
+            }
+            set ::ForceFieldToolKit::GenDihScan::basename [lindex [[atomselect top all] get resname] 0]
+        }
+
+    ttk::separator $ims.io.sep1 -orient vertical
+    ttk::button $ims.io.loadMolec -text "Load PSF/PDB" \
+        -command {
+            if { $::ForceFieldToolKit::Configuration::chargeOptPSF eq "" || ![file exists $::ForceFieldToolKit::Configuration::chargeOptPSF] } { tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot open PSF file."; return }
+            if { $::ForceFieldToolKit::Configuration::geomOptPDB eq "" || ![file exists $::ForceFieldToolKit::Configuration::geomOptPDB] } { tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot open PDB file."; return }
+            mol new $::ForceFieldToolKit::Configuration::chargeOptPSF
+            mol addfile $::ForceFieldToolKit::Configuration::geomOptPDB
+            ::ForceFieldToolKit::gui::consoleMessage "PSF/PDB files loaded (Scan Torsions)"
+        }
+    ttk::button $ims.io.toggleAtomLabels -text "Toggle Atom Labels" -command { ::ForceFieldToolKit::gui::imsToggleLabels }
+
+
+    # grid input/output
+    grid $ims.io -column 0 -row 1 -sticky nwe -padx $labelFramePadX -pady $labelFramePadY
+    grid columnconfigure $ims.io 1 -weight 1
+    grid rowconfigure $ims.io {0 1 2 3} -uniform rt1
+
+    grid $ims.io.psfLbl -column 0 -row 0 -sticky nswe
+    grid $ims.io.psf -column 1 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $ims.io.psfBrowse -column 2 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.io.pdbLbl -column 0 -row 1 -sticky nswe
+    grid $ims.io.pdb -column 1 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $ims.io.pdbBrowse -column 2 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.io.outPathLbl -column 0 -row 2 -sticky nswe
+    grid $ims.io.outPath -column 1 -row 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $ims.io.outPathBrowse -column 2 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.io.basenameLbl -column 0 -row 3 -sticky nswe
+
+    grid $ims.io.bNameSub -column 1 -row 3 -sticky nswe
+    grid columnconfigure $ims.io.bNameSub 0 -weight 1
+    grid $ims.io.bNameSub.basename -column 0 -row 0 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $ims.io.bNameSub.takeFromTop -column 1 -row 0 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+
+    grid $ims.io.sep1 -column 3 -row 0 -rowspan 4 -sticky nswe -padx $vsepPadX -pady $vsepPadY
+    grid $ims.io.loadMolec -column 4 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.io.toggleAtomLabels -column 4 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+
+
+    # build/grid a separator
+    ttk::separator $ims.sep1 -orient horizontal
+    grid $ims.sep1 -column 0 -row 2 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+
+    # IMPROPERS TO SCAN
+    # -----------------
+    # build impropers to scan
+    ttk::labelframe $ims.imprs2scan -text "Impropers to Scan" -labelanchor nw -padding $labelFrameInternalPadding
+    ttk::label $ims.imprs2scan.imprLbl -text "Improper Atoms" -anchor center
+    ttk::label $ims.imprs2scan.plusMinusLbl -text "Scan +/- (${degree})" -anchor center
+    ttk::label $ims.imprs2scan.stepSizeLbl -text "Step Size (${degree})" -anchor center
+    ttk::treeview $ims.imprs2scan.tv -selectmode browse -yscrollcommand "$ims.imprs2scan.scroll set"
+        $ims.imprs2scan.tv configure -columns {indDef plusMinus stepSize} -show {} -height 4
+        $ims.imprs2scan.tv heading indDef -text "Improper Atoms"
+        $ims.imprs2scan.tv heading plusMinus -text "+/-"
+        $ims.imprs2scan.tv heading stepSize -text "Step Size"
+        $ims.imprs2scan.tv column indDef -width 150 -stretch 1 -anchor center
+        $ims.imprs2scan.tv column plusMinus -width 100 -stretch 1 -anchor center
+        $ims.imprs2scan.tv column stepSize -width 100 -stretch 1 -anchor center
+    ttk::scrollbar $ims.imprs2scan.scroll -orient vertical -command "$ims.imprs2scan.tv yview"
+
+    # setup the binding to copy the selected TV item data to the edit boxes
+    # also show a representation of the selected tv item
+    bind $ims.imprs2scan.tv <<TreeviewSelect>> {
+        set editData [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv item [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection] -values]
+        set ::ForceFieldToolKit::gui::imsEditIndDef [lindex $editData 0]
+        set ::ForceFieldToolKit::gui::imsEditPlusMinus [lindex $editData 1]
+        set ::ForceFieldToolKit::gui::imsEditStepSize [lindex $editData 2]
+
+        ::ForceFieldToolKit::gui::imsShowSelRep
+    }
+
+    ttk::button $ims.imprs2scan.add -text "Add" -command { .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv insert {} end -values {{ind1 ind2 ind3 ind4} value value} }
+    ttk::button $ims.imprs2scan.import -text "Read from PAR" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select A Parameter File" -filetypes $::ForceFieldToolKit::gui::parType]
+            if {![string eq $tempfile ""]} {
+                set importData [::ForceFieldToolKit::gui::imsImportImpropers $::ForceFieldToolKit::Configuration::chargeOptPSF $::ForceFieldToolKit::Configuration::geomOptPDB $tempfile]
+                foreach ele $importData {
+                    .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv insert {} end -values [list $ele 30 3]
+                }
+            }
+        }
+    ttk::frame $ims.imprs2scan.move
+    ttk::button $ims.imprs2scan.move.up -text "$upArrow" -width 1 \
+        -command {
+            # ID of current
+            set currentID [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection]
+            # ID of previous
+            if {[set previousID [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv prev $currentID ]] ne ""} {
+                # Index of previous
+                set previousIndex [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv index $previousID]
+                # Move ahead of previous
+                .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv move $currentID {} $previousIndex
+                unset previousIndex
+            }
+            unset currentID previousID
+        }
+    ttk::button $ims.imprs2scan.move.down -text "$downArrow" -width 1 \
+        -command {
+            # ID of current
+            set currentID [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection]
+            # ID of Next
+            if {[set previousID [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv next $currentID ]] ne ""} {
+                # Index of Next
+                set previousIndex [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv index $previousID]
+                # Move below next
+                .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv move $currentID {} $previousIndex
+                unset previousIndex
+            }
+            unset currentID previousID
+        }
+    ttk::separator $ims.imprs2scan.sep1 -orient horizontal
+    ttk::button $ims.imprs2scan.delete -text "Delete" \
+        -command {
+            .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv delete [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection]
+            set ::ForceFieldToolKit::gui::imsEditIndDef {}
+            set ::ForceFieldToolKit::gui::imsEditPlusMinus {}
+            set ::ForceFieldToolKit::gui::imsEditStepSize {}
+        }
+    ttk::button $ims.imprs2scan.clear -text "Clear" \
+        -command {
+            .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv delete [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv children {}]
+            set ::ForceFieldToolKit::gui::imsEditIndDef {}
+            set ::ForceFieldToolKit::gui::imsEditPlusMinus {}
+            set ::ForceFieldToolKit::gui::imsEditStepSize {}
+        }
+    ttk::label $ims.imprs2scan.editLbl -text "Edit Entry" -anchor w
+    ttk::entry $ims.imprs2scan.editIndDef -textvariable ::ForceFieldToolKit::gui::imsEditIndDef -width 1 -justify center
+    ttk::entry $ims.imprs2scan.editPlusMinus -textvariable ::ForceFieldToolKit::gui::imsEditPlusMinus -width 1 -justify center
+    ttk::entry $ims.imprs2scan.editStepSize -textvariable ::ForceFieldToolKit::gui::imsEditStepSize -width 1 -justify center
+    ttk::frame $ims.imprs2scan.editAcceptCancel
+    ttk::button $ims.imprs2scan.editAcceptCancel.accept -text "$accept" -width 1 \
+        -command {
+            .fftk_gui.hlf.nb.genImprScan.imprs2scan.tv item [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection] \
+            -values [list $::ForceFieldToolKit::gui::imsEditIndDef $::ForceFieldToolKit::gui::imsEditPlusMinus $::ForceFieldToolKit::gui::imsEditStepSize]
+        }
+    ttk::button $ims.imprs2scan.editAcceptCancel.cancel -text "$cancel" -width 1 \
+        -command {
+        set editData [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv item [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection] -values]
+        set ::ForceFieldToolKit::gui::imsEditIndDef [lindex $editData 0]
+        set ::ForceFieldToolKit::gui::imsEditPlusMinus [lindex $editData 2]
+        set ::ForceFieldToolKit::gui::imsEditStepSize [lindex $editData 3]
+        }
+
+    # grid impropers to scan
+    grid $ims.imprs2scan -column 0 -row 3 -sticky nswe
+    grid columnconfigure $ims.imprs2scan 0 -weight 1 -minsize 150
+    grid columnconfigure $ims.imprs2scan 1 -weight 1 -minsize 100
+    grid columnconfigure $ims.imprs2scan 2 -weight 1 -minsize 100
+    grid rowconfigure $ims.imprs2scan 7 -weight 1
+    grid rowconfigure $ims.imprs2scan {1 2 3 5 6 9} -uniform rt1
+
+    grid $ims.imprs2scan.imprLbl -column 0 -row 0 -sticky nswe
+    grid $ims.imprs2scan.plusMinusLbl -column 1 -row 0 -sticky nswe
+    grid $ims.imprs2scan.stepSizeLbl -column 2 -row 0 -sticky nswe
+    grid $ims.imprs2scan.tv -column 0 -row 1 -columnspan 4 -rowspan 7 -sticky nswe
+    grid $ims.imprs2scan.scroll -column 3 -row 1 -rowspan 7 -sticky nswe
+
+    grid $ims.imprs2scan.add -column 4 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.imprs2scan.import -column 4 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.imprs2scan.move -column 4 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid columnconfigure $ims.imprs2scan.move 0 -weight 1
+    grid columnconfigure $ims.imprs2scan.move 1 -weight 1
+    grid $ims.imprs2scan.move.up -column 0 -row 0 -sticky nswe
+    grid $ims.imprs2scan.move.down -column 1 -row 0 -sticky nswe
+    grid $ims.imprs2scan.sep1 -column 4 -row 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $ims.imprs2scan.delete -column 4 -row 5 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $ims.imprs2scan.clear -column 4 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+
+    grid $ims.imprs2scan.editLbl -column 0 -row 8 -sticky nswe
+    grid $ims.imprs2scan.editIndDef -column 0 -row 9 -sticky nswe
+    grid $ims.imprs2scan.editPlusMinus -column 1 -row 9 -sticky nswe
+    grid $ims.imprs2scan.editStepSize -column 2 -row 9 -sticky nswe
+    grid $ims.imprs2scan.editAcceptCancel -column 4 -row 9 -sticky nswe  -padx $vbuttonPadX -pady $vbuttonPadY
+    grid columnconfigure $ims.imprs2scan.editAcceptCancel 0 -weight 1
+    grid columnconfigure $ims.imprs2scan.editAcceptCancel 1 -weight 1
+    grid $ims.imprs2scan.editAcceptCancel.accept -column 0 -row 0 -sticky nswe
+    grid $ims.imprs2scan.editAcceptCancel.cancel -column 1 -row 0 -sticky nswe
+
+    # build/grid a separator
+    ttk::separator $ims.sep2 -orient horizontal
+    grid $ims.sep2 -column 0 -row 4 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+
+    # GAUSSIAN SETTINGS
+    # -----------------
+
+    # build QM settings
+    ttk::labelframe $ims.qm -text "QM Settings" -labelanchor nw -padding $labelFrameInternalPadding
+
+    # add QM Selector
+    ttk::menubutton $ims.qm.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
+
+    ttk::label $ims.qm.procLbl -text "Processors:" -anchor w
+    ttk::entry $ims.qm.proc -textvariable ::ForceFieldToolKit::GenDihScan::qmProc -width 2 -justify center
+    ttk::label $ims.qm.chargeLbl -text "Charge:" -anchor w
+    ttk::entry $ims.qm.charge -textvariable ::ForceFieldToolKit::GenDihScan::qmCharge -width 2 -justify center
+    ttk::label $ims.qm.memLbl -text "Memory (GB):" -anchor w
+    ttk::entry $ims.qm.mem -textvariable ::ForceFieldToolKit::GenDihScan::qmMem -width 2 -justify center
+    ttk::label $ims.qm.multLbl -text "Multiplicity:" -anchor w
+    ttk::entry $ims.qm.mult -textvariable ::ForceFieldToolKit::GenDihScan::qmMult -width 2 -justify center
+    ttk::button $ims.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenDihScan }
+    ttk::label $ims.qm.routeLbl -text "Route:" -justify center
+    ttk::entry $ims.qm.route -textvariable ::ForceFieldToolKit::GenDihScan::qmRoute
+
+
+    # grid QM settings
+    grid $ims.qm -column 0 -row 5 -sticky nswe
+    grid rowconfigure $ims.qm {0 1} -uniform rt1
+
+    grid $ims.qm.selector   -column 0 -row 0 -columnspan 5 -sticky nsw
+
+    grid $ims.qm.procLbl -column 0 -row 1 -sticky w
+    grid $ims.qm.proc -column 1 -row 1 -sticky w
+    grid $ims.qm.memLbl -column 2 -row 1 -sticky w
+    grid $ims.qm.mem -column 3 -row 1 -sticky w
+    grid $ims.qm.chargeLbl -column 4 -row 1 -sticky w
+    grid $ims.qm.charge -column 5 -row 1 -sticky w
+    grid $ims.qm.multLbl -column 6 -row 1 -sticky w
+    grid $ims.qm.mult -column 7 -row 1 -sticky w
+    grid $ims.qm.defaults -column 8 -row 1 -sticky we -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $ims.qm.routeLbl -column 0 -row 2
+    grid $ims.qm.route -column 1 -row 2 -columnspan 8 -sticky nswe -padx $entryPadX -pady $entryPadY
+
+    # build/grid a separator
+    ttk::separator $ims.sep3 -orient horizontal
+    grid $ims.sep3 -column 0 -row 6 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+
+
+    # GENERATE
+    # build generate section
+    ttk::frame $ims.generate
+    ttk::button $ims.generate.go -text "Generate Improper Scan Input" \
+        -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+            set ::ForceFieldToolKit::GenDihScan::dihData {}
+            foreach ele [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv children {}] {
+                lappend ::ForceFieldToolKit::GenDihScan::dihData [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv item $ele -values]
+            }
+            ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
+            ::ForceFieldToolKit::gui::consoleMessage "QM files written (Scan Impropers)"
+        }
+    ttk::button $ims.generate.load -text "Load Improper Scan Output Files" \
+        -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+            set glogs [tk_getOpenFile -title "Select Output File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllLogType]
+            if { [llength $glogs] == 0 } {
+                unset glogs
+                return
+            ### The psf and pdb variable names here were changed. The previous variable names could point to no files.
+            } elseif { $::ForceFieldToolKit::Configuration::chargeOptPSF eq "" || ![file exists $::ForceFieldToolKit::Configuration::chargeOptPSF] } {
+                tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PSF file."
+                unset glogs
+                return
+            } elseif { $::ForceFieldToolKit::Configuration::geomOptPDB eq "" || ![file exists $::ForceFieldToolKit::Configuration::geomOptPDB] } {
+                tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find PDB file."
+                unset glogs
+                return
+            } else {
+                set scanData [::ForceFieldToolKit::DihOpt::parseGlog $glogs]
+		# Continue only if scanData contains some information, namely if there was no error during the parseGlog procedure
+                if { $scanData ne "" } {::ForceFieldToolKit::DihOpt::vmdLoadQMData $::ForceFieldToolKit::Configuration::chargeOptPSF $::ForceFieldToolKit::Configuration::geomOptPDB $scanData
+                unset scanData
+                unset glogs
+                ::ForceFieldToolKit::gui::consoleMessage "QM output file(s) loaded (Scan Impropers)"
+		}
+           }
+        }
+
+    # grid generate section
+    grid $ims.generate -column 0 -row 7 -sticky nswe
+    grid columnconfigure $ims.generate {0 1 2} -uniform ct1 -weight 1
+    grid rowconfigure $ims.generate 0 -minsize 50
+
+    grid $ims.generate.go        -column 0 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid $ims.generate.load      -column 1 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
 
 
 
@@ -4426,25 +4841,41 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     # for shorter naming convention
     set dopt $w.hlf.nb.dihopt
 
+    # Dih/Impr Optimization Selector
+    # -----------------------------------
+    ttk::frame      $dopt.dihImprSelector
+    ttk::label      $dopt.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
+    ttk::menubutton $dopt.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
+    ttk::separator  $dopt.dihImprSelectorSep -orient horizontal 
+
+    grid $dopt.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
+    grid $dopt.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
+    grid $dopt.dihImprSelector.selector -column 1 -row 0 -sticky nsw
+    grid $dopt.dihImprSelectorSep -column 0 -row 1 -sticky nwe -padx $hsepPadX -pady $hsepPadY
+
+    grid columnconfigure $dopt.dihImprSelector 1 -minsize 15 -weight 1
+
+
     # INPUT
     # -----
     # build input labels
     ttk::labelframe $dopt.input -labelanchor nw -padding $labelFrameInternalPadding
     ttk::label $dopt.input.lblWidget -text "$downPoint Input" -anchor w -font TkDefaultFont
     $dopt.input configure -labelwidget $dopt.input.lblWidget
+
     ttk::label $dopt.inputPlaceHolder -text "$rightPoint Input" -anchor w -font TkDefaultFont
 
     # set mouse click bindings to expand/contract input settings
     bind $dopt.input.lblWidget <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.input
         grid .fftk_gui.hlf.nb.dihopt.inputPlaceHolder
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 0 -weight 0
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 2 -weight 0
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
     bind $dopt.inputPlaceHolder <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.inputPlaceHolder
         grid .fftk_gui.hlf.nb.dihopt.input
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 0 -weight 1
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 2 -weight 1
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
@@ -4499,12 +4930,12 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
         }
 
     # grid input elements
-    grid $dopt.input -column 0 -row 0 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $dopt.input -column 0 -row 2 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $dopt.input 1 -weight 1
     grid rowconfigure $dopt.input {0 1 4 5 6 9} -uniform rt1
     grid rowconfigure $dopt.input 7 -weight 1
     grid remove $dopt.input
-    grid $dopt.inputPlaceHolder -column 0 -row 0 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $dopt.inputPlaceHolder -column 0 -row 2 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
     grid $dopt.input.psfPathLbl -column 0 -row 0 -sticky nswe
     grid $dopt.input.psfPath -column 1 -row 0 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $dopt.input.psfPathBrowse -column 3 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
@@ -4538,13 +4969,13 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     bind $dopt.qmt.lblWidget <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.qmt
         grid .fftk_gui.hlf.nb.dihopt.qmtPlaceHolder
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 1 -weight 0
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 3 -weight 0
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
     bind $dopt.qmtPlaceHolder <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.qmtPlaceHolder
         grid .fftk_gui.hlf.nb.dihopt.qmt
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 1 -weight 1
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 3 -weight 1
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
@@ -4597,16 +5028,16 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::button $dopt.qmt.clear -text "Clear" -command { .fftk_gui.hlf.nb.dihopt.qmt.tv delete [.fftk_gui.hlf.nb.dihopt.qmt.tv children {}] }
 
     # grid the QM target data elements
-    grid $dopt.qmt -column 0 -row 1 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $dopt.qmt -column 0 -row 3 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $dopt.qmt 0 -weight 1
     grid rowconfigure $dopt.qmt 7 -weight 1
 
     grid remove $dopt.qmt
-    grid $dopt.qmtPlaceHolder -column 0 -row 1 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $dopt.qmtPlaceHolder -column 0 -row 3 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
     grid $dopt.qmt.selector -column 0 -row 0 -columnspan 5 -sticky nsw
 
-    grid $dopt.qmt.lbl -column 0 -row 1 -sticky nswe
+    grid $dopt.qmt.lbl -column 0 -row 2 -sticky nswe
     grid $dopt.qmt.tv -column 0 -row 2 -rowspan 7 -sticky nswe
     grid $dopt.qmt.scroll -column 1 -row 2 -rowspan 7 -sticky nswe
     grid $dopt.qmt.add -column 2 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
@@ -4629,13 +5060,13 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     bind $dopt.parSet.lblWidget <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.parSet
         grid .fftk_gui.hlf.nb.dihopt.parSetPlaceHolder
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 2 -weight 0
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 4 -weight 0
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
     bind $dopt.parSetPlaceHolder <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.parSetPlaceHolder
         grid .fftk_gui.hlf.nb.dihopt.parSet
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 2 -weight 1
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 4 -weight 1
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
@@ -4780,7 +5211,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
         }
 
     # grid the parameter settings elements
-    grid $dopt.parSet -column 0 -row 2 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $dopt.parSet -column 0 -row 4 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $dopt.parSet 0 -weight 1 -minsize 150
     grid columnconfigure $dopt.parSet {1 2 3 4} -weight 0 -minsize 100
 
@@ -4788,7 +5219,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     grid rowconfigure $dopt.parSet 8 -weight 1
     grid remove $dopt.parSet
 
-    grid $dopt.parSetPlaceHolder -column 0 -row 2 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $dopt.parSetPlaceHolder -column 0 -row 4 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
     grid $dopt.parSet.typeDefLbl -column 0 -row 0 -sticky nwse
     grid $dopt.parSet.fcLbl -column 1 -row 0 -sticky nswe
@@ -4891,10 +5322,10 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::label $dopt.adv.run.keepMMTrajLbl -text "Save MM Traj." -anchor w
 
     # grid advanced settings section
-    grid $dopt.adv -column 0 -row 3 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $dopt.adv -column 0 -row 5 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $dopt.adv 0 -weight 1
     grid remove $dopt.adv
-    grid $dopt.advPlaceHolder -column 0 -row 3 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $dopt.advPlaceHolder -column 0 -row 5 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
     grid $dopt.adv.dih -column 0 -row 0 -sticky nswe
     grid $dopt.adv.dih.lbl -column 0 -row 0 -columnspan 2 -sticky nswe
     grid $dopt.adv.dih.kmaxLbl -column 0 -row 1 -sticky nswe
@@ -4944,22 +5375,22 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     bind $dopt.results.lblWidget <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.results
         grid .fftk_gui.hlf.nb.dihopt.resultsPlaceHolder
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 4 -weight 0
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 6 -weight 0
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
     bind $dopt.resultsPlaceHolder <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.resultsPlaceHolder
         grid .fftk_gui.hlf.nb.dihopt.results
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 4 -weight 1
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 6 -weight 1
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
     # grid the results section heading
-    grid $dopt.results -column 0 -row 4 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $dopt.results -column 0 -row 6 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $dopt.results 0 -weight 1
     grid rowconfigure $dopt.results 2 -weight 1
     grid remove $dopt.results
-    grid $dopt.resultsPlaceHolder -column 0 -row 4 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $dopt.resultsPlaceHolder -column 0 -row 6 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
     # PREAMBLE
     # --------
@@ -5155,23 +5586,23 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     bind $dopt.refine.lblWidget <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.refine
         grid .fftk_gui.hlf.nb.dihopt.refinePlaceHolder
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 5 -weight 0
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 7 -weight 0
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
     bind $dopt.refinePlaceHolder <Button-1> {
         grid remove .fftk_gui.hlf.nb.dihopt.refinePlaceHolder
         grid .fftk_gui.hlf.nb.dihopt.refine
-        grid rowconfigure .fftk_gui.hlf.nb.dihopt 5 -weight 1
+        grid rowconfigure .fftk_gui.hlf.nb.dihopt 7 -weight 1
         ::ForceFieldToolKit::gui::resizeToActiveTab
     }
 
     # grid the refine section heading
-    grid $dopt.refine -column 0 -row 5 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid $dopt.refine -column 0 -row 7 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $dopt.refine 0 -weight 1
     grid rowconfigure $dopt.refine 2 -weight 1
     grid remove $dopt.refine
-    grid $dopt.refinePlaceHolder -column 0 -row 5 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $dopt.refinePlaceHolder -column 0 -row 7 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
 
     # build the refine section
     ttk::label $dopt.refine.lbl -text "Modify Dihedral Parameters for Refitting/Refinement" -anchor w
@@ -5420,7 +5851,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # build/grid a separator
     ttk::separator $dopt.sep1 -orient horizontal
-    grid $dopt.sep1 -column 0 -row 7 -sticky we -padx $hsepPadX -pady $hsepPadY
+    grid $dopt.sep1 -column 0 -row 9 -sticky we -padx $hsepPadX -pady $hsepPadY
 
     # RUN
     # ---
@@ -5437,15 +5868,702 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 	    }
 
     # grid the run section
-    grid $dopt.status -column 0 -row 8 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid $dopt.status -column 0 -row 10 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
     grid columnconfigure $dopt.status 1 -weight 1
     grid $dopt.status.lbl -column 0 -row 0 -sticky nswe
     grid $dopt.status.txt -column 1 -row 0 -sticky nswe
 
-    grid $dopt.runOpt -column 0 -row 9 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
-    grid rowconfigure $dopt 9 -minsize 50 -weight 0
+    grid $dopt.runOpt -column 0 -row 11 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid rowconfigure $dopt 11 -minsize 50 -weight 0
 
 
+
+    #---------------------------------------------------#
+    #  ImprOpt     tab                                   #
+    #---------------------------------------------------#
+
+    # build the frame, add it to the notebook
+    ttk::frame $w.hlf.nb.impropt -width 500 -height 500
+    $w.hlf.nb add $w.hlf.nb.impropt -text "Opt. Impropers"
+    # allow frame to change width with content
+    grid columnconfigure $w.hlf.nb.impropt 0 -weight 1
+
+    # for shorter naming convention
+    set imopt $w.hlf.nb.impropt
+
+    # Dih/Impr Optimization Selector
+    # -----------------------------------
+    ttk::frame      $imopt.dihImprSelector
+    ttk::label      $imopt.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
+    ttk::menubutton $imopt.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
+    ttk::separator  $imopt.dihImprSelectorSep -orient horizontal 
+
+    grid $imopt.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
+    grid $imopt.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
+    grid $imopt.dihImprSelector.selector -column 1 -row 0 -sticky nsw
+    grid $imopt.dihImprSelectorSep -column 0 -row 1 -sticky nwe -padx $hsepPadX -pady $hsepPadY
+
+    grid columnconfigure $imopt.dihImprSelector 1 -minsize 15 -weight 1
+
+
+    # INPUT
+    # -----
+    # build input labels
+    ttk::labelframe $imopt.input -labelanchor nw -padding $labelFrameInternalPadding
+    ttk::label $imopt.input.lblWidget -text "$downPoint Input" -anchor w -font TkDefaultFont
+    $imopt.input configure -labelwidget $imopt.input.lblWidget
+
+    ttk::label $imopt.inputPlaceHolder -text "$rightPoint Input" -anchor w -font TkDefaultFont
+
+    # set mouse click bindings to expand/contract input settings
+    bind $imopt.input.lblWidget <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.input
+        grid .fftk_gui.hlf.nb.impropt.inputPlaceHolder
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 2 -weight 0
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+    bind $imopt.inputPlaceHolder <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.inputPlaceHolder
+        grid .fftk_gui.hlf.nb.impropt.input
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 2 -weight 1
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+
+    # build input elements
+    ttk::label $imopt.input.psfPathLbl -text "PSF File:" -anchor center
+    ttk::entry $imopt.input.psfPath -textvariable ::ForceFieldToolKit::Configuration::chargeOptPSF
+    ttk::button $imopt.input.psfPathBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select A PSF File" -filetypes $::ForceFieldToolKit::gui::psfType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::chargeOptPSF $tempfile }
+        }
+    ttk::label $imopt.input.pdbPathLbl -text "PDB File:" -anchor center
+    ttk::entry $imopt.input.pdbPath -textvariable ::ForceFieldToolKit::Configuration::geomOptPDB
+    ttk::button $imopt.input.pdbPathBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::geomOptPDB $tempfile }
+        }
+
+    ttk::separator $imopt.input.sep1 -orient horizontal
+
+    ttk::label $imopt.input.parFilesLbl -text "Parameter Files (both pre-defined and in-progress)" -anchor w
+    ttk::treeview $imopt.input.parFiles -selectmode browse -yscrollcommand "$imopt.input.parFilesScroll set"
+        $imopt.input.parFiles configure -columns {filename} -show {} -height 3
+        $imopt.input.parFiles column filename -stretch 1
+    ttk::scrollbar $imopt.input.parFilesScroll -orient vertical -command "$imopt.input.parFiles yview"
+    ttk::button $imopt.input.add -text "Add" \
+        -command {
+            set tempfiles [tk_getOpenFile -title "Select Parameter File(s)" -multiple 1 -filetypes $::ForceFieldToolKit::gui::parType]
+            foreach tempfile $tempfiles {
+                if {![string eq $tempfile ""]} { .fftk_gui.hlf.nb.impropt.input.parFiles insert {} end -values [list $tempfile] }
+            }
+        }
+    ttk::button $imopt.input.delete -text "Delete" -command { .fftk_gui.hlf.nb.impropt.input.parFiles delete [.fftk_gui.hlf.nb.impropt.input.parFiles selection] }
+    ttk::button $imopt.input.clear -text "Clear" -command { .fftk_gui.hlf.nb.impropt.input.parFiles delete [.fftk_gui.hlf.nb.impropt.input.parFiles children {}] }
+
+    ttk::separator $imopt.input.sep2 -orient horizontal
+
+    ttk::label $imopt.input.namdbinLbl -text "NAMD binary:" -anchor center
+    ttk::entry $imopt.input.namdbin -textvariable ::ForceFieldToolKit::Configuration::namdBin
+    ttk::button $imopt.input.namdbinBrowse -text "Browse" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select NAMD Bin File" -filetypes $::ForceFieldToolKit::gui::allType]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::namdBin $tempfile }
+        }
+    ttk::label $imopt.input.logLbl -text "Output LOG:" -anchor center
+    ttk::entry $imopt.input.log -textvariable ::ForceFieldToolKit::DihOpt::outFileNameImpr
+    ttk::button $imopt.input.logSaveAs -text "SaveAs" \
+        -command {
+            set tempfile [tk_getSaveFile -title "Save Dihedral Optimization LOG File As..." -initialfile "$::ForceFieldToolKit::DihOpt::outFileNameImpr" -filetypes $::ForceFieldToolKit::gui::logType -defaultextension {.log}]
+            if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::DihOpt::outFileNameImpr $tempfile }
+        }
+
+    # grid input elements
+    grid $imopt.input -column 0 -row 2 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid columnconfigure $imopt.input 1 -weight 1
+    grid rowconfigure $imopt.input {0 1 4 5 6 9} -uniform rt1
+    grid rowconfigure $imopt.input 7 -weight 1
+    grid remove $imopt.input
+    grid $imopt.inputPlaceHolder -column 0 -row 2 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $imopt.input.psfPathLbl -column 0 -row 0 -sticky nswe
+    grid $imopt.input.psfPath -column 1 -row 0 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $imopt.input.psfPathBrowse -column 3 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.input.pdbPathLbl -column 0 -row 1 -sticky nswe
+    grid $imopt.input.pdbPath -column 1 -row 1 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $imopt.input.pdbPathBrowse -column 3 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.input.sep1 -column 0 -row 2 -columnspan 4 -sticky we -padx $hsepPadX -pady $hsepPadY
+    grid $imopt.input.parFilesLbl -column 0 -row 3 -sticky nswe -columnspan 2
+    grid $imopt.input.parFiles -column 0 -row 4 -columnspan 2 -rowspan 4 -sticky nswe
+    grid $imopt.input.parFilesScroll -column 2 -row 4 -rowspan 4 -sticky nswe
+    grid $imopt.input.add -column 3 -row 4 -sticky nwe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.input.delete -column 3 -row 5 -sticky nwe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.input.clear -column 3 -row 6 -sticky nwe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.input.sep2 -column 0 -row 8 -columnspan 4 -sticky we -padx $hsepPadX -pady $hsepPadY
+    grid $imopt.input.namdbinLbl -column 0 -row 9 -sticky nswe
+    grid $imopt.input.namdbin -column 1 -row 9 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $imopt.input.namdbinBrowse -column 3 -row 9 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.input.logLbl -column 0 -row 10 -sticky nswe
+    grid $imopt.input.log -column 1 -row 10 -columnspan 2 -sticky nswe -padx $entryPadX -pady $entryPadY
+    grid $imopt.input.logSaveAs -column 3 -row 10 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+
+    # QM TARGET DATA
+    # --------------
+    # build QM target data labels
+    ttk::labelframe $imopt.qmt -labelanchor nw -padding $labelFrameInternalPadding
+    ttk::label $imopt.qmt.lblWidget -text "$downPoint QM Target Data" -anchor w -font TkDefaultFont
+    $imopt.qmt configure -labelwidget $imopt.qmt.lblWidget
+    ttk::label $imopt.qmtPlaceHolder -text "$rightPoint QM Target Data" -anchor w -font TkDefaultFont
+
+    # set mouse click bindings to expand/contract qmt settings
+    bind $imopt.qmt.lblWidget <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.qmt
+        grid .fftk_gui.hlf.nb.impropt.qmtPlaceHolder
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 3 -weight 0
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+    bind $imopt.qmtPlaceHolder <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.qmtPlaceHolder
+        grid .fftk_gui.hlf.nb.impropt.qmt
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 3 -weight 1
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+
+    # build QM target data (Log files) elements
+    # QM selector
+    ttk::menubutton $imopt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15 
+
+    ttk::label $imopt.qmt.lbl -text "QM Dihedral Scan Output Files" -anchor w
+    ttk::treeview $imopt.qmt.tv -selectmode browse -yscrollcommand "$imopt.qmt.scroll set"
+        $imopt.qmt.tv configure -columns {filename} -show {} -height 5
+        $imopt.qmt.tv column filename -stretch 1
+    ttk::scrollbar $imopt.qmt.scroll -orient vertical -command "$imopt.qmt.tv yview"
+    ttk::button $imopt.qmt.add -text "Add" \
+        -command {
+            set tempfiles [tk_getOpenFile -title "Select Output File(s) for Dihedral Scan Calculations" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllLogType]
+            foreach tempfile $tempfiles {
+                if {![string eq $tempfile ""]} { .fftk_gui.hlf.nb.impropt.qmt.tv insert {} end -values $tempfile }
+            }
+        }
+    ttk::button $imopt.qmt.moveUp -text "Move $upArrow" \
+        -command {
+            # ID of current
+            set currentID [.fftk_gui.hlf.nb.impropt.qmt.tv selection]
+            # ID of previous
+            if {[set previousID [.fftk_gui.hlf.nb.impropt.qmt.tv prev $currentID ]] ne ""} {
+                # Index of previous
+                set previousIndex [.fftk_gui.hlf.nb.impropt.qmt.tv index $previousID]
+                # Move ahead of previous
+                .fftk_gui.hlf.nb.impropt.qmt.tv move $currentID {} $previousIndex
+                unset previousIndex
+            }
+            unset currentID previousID
+        }
+    ttk::button $imopt.qmt.moveDown -text "Move $downArrow" \
+        -command {
+            # ID of current
+            set currentID [.fftk_gui.hlf.nb.impropt.qmt.tv selection]
+            # ID of Next
+            if {[set previousID [.fftk_gui.hlf.nb.impropt.qmt.tv next $currentID ]] ne ""} {
+                # Index of Next
+                set previousIndex [.fftk_gui.hlf.nb.impropt.qmt.tv index $previousID]
+                # Move below next
+                .fftk_gui.hlf.nb.impropt.qmt.tv move $currentID {} $previousIndex
+                unset previousIndex
+            }
+            unset currentID previousID
+        }
+    ttk::separator $imopt.qmt.sep1 -orient horizontal
+    ttk::button $imopt.qmt.delete -text "Delete" -command { .fftk_gui.hlf.nb.impropt.qmt.tv delete [.fftk_gui.hlf.nb.impropt.qmt.tv selection] }
+    ttk::button $imopt.qmt.clear -text "Clear" -command { .fftk_gui.hlf.nb.impropt.qmt.tv delete [.fftk_gui.hlf.nb.impropt.qmt.tv children {}] }
+
+    # grid the QM target data elements
+    grid $imopt.qmt -column 0 -row 3 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid columnconfigure $imopt.qmt 0 -weight 1
+    grid rowconfigure $imopt.qmt 7 -weight 1
+
+    grid remove $imopt.qmt
+    grid $imopt.qmtPlaceHolder -column 0 -row 3 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+
+    grid $imopt.qmt.selector -column 0 -row 0 -columnspan 5 -sticky nsw
+
+    grid $imopt.qmt.lbl -column 0 -row 2 -sticky nswe
+    grid $imopt.qmt.tv -column 0 -row 2 -rowspan 7 -sticky nswe
+    grid $imopt.qmt.scroll -column 1 -row 2 -rowspan 7 -sticky nswe
+    grid $imopt.qmt.add -column 2 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.qmt.moveUp -column 2 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.qmt.moveDown -column 2 -row 4 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.qmt.sep1 -column 2 -row 5 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $imopt.qmt.delete -column 2 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.qmt.clear -column 2 -row 7 -sticky nwe -padx $vbuttonPadX -pady $vbuttonPadY
+
+
+    # IMPROPER PARAMETER SETTINGS
+    # ----------------------
+    # build the parameter settings labels
+    ttk::labelframe $imopt.parSet -labelanchor nw -padding $labelFrameInternalPadding
+    ttk::label $imopt.parSet.lblWidget -text "$downPoint Improper Parameter Settings" -anchor w -font TkDefaultFont
+    $imopt.parSet configure -labelwidget $imopt.parSet.lblWidget
+    ttk::label $imopt.parSetPlaceHolder -text "$rightPoint Improper Parameter Settings" -anchor w -font TkDefaultFont
+
+    # set mouse click bindings to expand/contract
+    bind $imopt.parSet.lblWidget <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.parSet
+        grid .fftk_gui.hlf.nb.impropt.parSetPlaceHolder
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 4 -weight 0
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+    bind $imopt.parSetPlaceHolder <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.parSetPlaceHolder
+        grid .fftk_gui.hlf.nb.impropt.parSet
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 4 -weight 1
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+
+    # build the parameter settings elements
+    ttk::label $imopt.parSet.typeDefLbl -text "Improper Type Definition" -anchor w
+    ttk::label $imopt.parSet.fcLbl -text "Force Constant (k)" -anchor center
+    ttk::treeview $imopt.parSet.tv -selectmode browse -yscrollcommand "$imopt.parSet.scroll set"
+        $imopt.parSet.tv configure -column {def fc} -show {} -height 5
+        $imopt.parSet.tv heading def -text "Improper Type Definition" -anchor w
+        $imopt.parSet.tv heading fc -text "Force Constant (k)" -anchor center
+        $imopt.parSet.tv column def -width 150 -stretch 1 -anchor w
+        $imopt.parSet.tv column fc -width 100 -stretch 0 -anchor center
+    ttk::scrollbar $imopt.parSet.scroll -orient vertical -command "$imopt.parSet.tv yview"
+
+    # setup the binding to copy the selected TV item data to the edit boxes
+    bind $imopt.parSet.tv <<TreeviewSelect>> {
+        set editData [.fftk_gui.hlf.nb.impropt.parSet.tv item [.fftk_gui.hlf.nb.impropt.parSet.tv selection] -values]
+        set ::ForceFieldToolKit::gui::imoptEditDef [lindex $editData 0]
+        set ::ForceFieldToolKit::gui::imoptEditFC [lindex $editData 1]
+    }
+
+    ttk::button $imopt.parSet.import -text "Read from PAR" \
+        -command {
+            set tempfile [tk_getOpenFile -title "Select A Parameter File" -filetypes $::ForceFieldToolKit::gui::parType]
+            if {![string eq $tempfile ""]} {
+                # read the parameter file and grab the impropers section
+                set imprParamsIn [lindex [::ForceFieldToolKit::SharedFcns::readParFile $tempfile] 3]
+                # parse out indv dihedral parameter data and add a new entry to the TV
+                foreach impr $imprParamsIn {
+                    .fftk_gui.hlf.nb.impropt.parSet.tv insert {} end -values [list [lindex $impr 0] [lindex $impr 1 0]]
+                }
+                # clean up
+                unset imprParamsIn
+            }
+        }
+    ttk::button $imopt.parSet.add -text "Add" -command { .fftk_gui.hlf.nb.impropt.parSet.tv insert {} end -values [list "AT1 AT2 AT3 AT4" "0.0"] }
+    ttk::button $imopt.parSet.duplicate -text "Duplicate" -width 8 \
+        -command {
+            set currID [.fftk_gui.hlf.nb.impropt.parSet.tv selection]
+            set currIndex [.fftk_gui.hlf.nb.impropt.parSet.tv index $currID]
+            set currValues [.fftk_gui.hlf.nb.impropt.parSet.tv item $currID -values]
+            .fftk_gui.hlf.nb.impropt.parSet.tv insert {} [expr {$currIndex+1}] -values $currValues
+            unset currID currIndex currValues
+        }
+    ttk::frame $imopt.parSet.move
+    ttk::button $imopt.parSet.move.up -text "$upArrow" -width 1 \
+        -command {
+            # ID of current
+            set currentID [.fftk_gui.hlf.nb.impropt.parSet.tv selection]
+            # ID of previous
+            if {[set previousID [.fftk_gui.hlf.nb.impropt.parSet.tv prev $currentID ]] ne ""} {
+                # Index of previous
+                set previousIndex [.fftk_gui.hlf.nb.impropt.parSet.tv index $previousID]
+                # Move ahead of previous
+                .fftk_gui.hlf.nb.impropt.parSet.tv move $currentID {} $previousIndex
+                unset previousIndex
+            }
+            unset currentID previousID
+        }
+    ttk::button $imopt.parSet.move.down -text "$downArrow" -width 1 \
+        -command {
+            # ID of current
+            set currentID [.fftk_gui.hlf.nb.impropt.parSet.tv selection]
+            # ID of Next
+            if {[set previousID [.fftk_gui.hlf.nb.impropt.parSet.tv next $currentID ]] ne ""} {
+                # Index of Next
+                set previousIndex [.fftk_gui.hlf.nb.impropt.parSet.tv index $previousID]
+                # Move below next
+                .fftk_gui.hlf.nb.impropt.parSet.tv move $currentID {} $previousIndex
+                unset previousIndex
+            }
+            unset currentID previousID
+        }
+
+    ttk::separator $imopt.parSet.sep -orient horizontal
+
+    ttk::button $imopt.parSet.delete -text "Delete" \
+        -command {
+            .fftk_gui.hlf.nb.impropt.parSet.tv delete [.fftk_gui.hlf.nb.impropt.parSet.tv selection]
+            set ::ForceFieldToolKit::gui::imoptEditDef {}
+            set ::ForceFieldToolKit::gui::imoptEditFC {}
+        }
+    ttk::button $imopt.parSet.clear -text "Clear" \
+        -command {
+            .fftk_gui.hlf.nb.impropt.parSet.tv delete [.fftk_gui.hlf.nb.impropt.parSet.tv children {}]
+            set ::ForceFieldToolKit::gui::imoptEditDef {}
+            set ::ForceFieldToolKit::gui::imoptEditFC {}
+        }
+
+    ttk::label $imopt.parSet.editLbl -text "Edit Entry" -anchor w
+    ttk::entry $imopt.parSet.editDef -textvariable ::ForceFieldToolKit::gui::imoptEditDef -justify left
+    ttk::entry $imopt.parSet.editFC -textvariable ::ForceFieldToolKit::gui::imoptEditFC -justify center -width 1
+
+    ttk::frame $imopt.parSet.editButtons
+    ttk::button $imopt.parSet.editButtons.accept -text "$accept" -width 1 \
+        -command {
+            .fftk_gui.hlf.nb.impropt.parSet.tv item [.fftk_gui.hlf.nb.impropt.parSet.tv selection] \
+            -values [list $::ForceFieldToolKit::gui::imoptEditDef $::ForceFieldToolKit::gui::imoptEditFC]
+        }
+    ttk::button $imopt.parSet.editButtons.cancel -text "$cancel" -width 1 \
+        -command {
+            set editData [.fftk_gui.hlf.nb.impropt.parSet.tv item [.fftk_gui.hlf.nb.impropt.parSet.tv selection] -values]
+            set ::ForceFieldToolKit::gui::imoptEditDef [lindex $editData 0]
+            set ::ForceFieldToolKit::gui::imoptEditFC [lindex $editData 1]
+        }
+
+    # grid the parameter settings elements
+    grid $imopt.parSet -column 0 -row 4 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid columnconfigure $imopt.parSet 0 -weight 1 -minsize 100
+    grid columnconfigure $imopt.parSet 1 -weight 0 -minsize 100
+
+    grid rowconfigure $imopt.parSet {1 3 4 6} -uniform rt1
+    grid rowconfigure $imopt.parSet 8 -weight 1
+    grid remove $imopt.parSet
+
+    grid $imopt.parSetPlaceHolder -column 0 -row 4 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+
+    grid $imopt.parSet.typeDefLbl -column 0 -row 0 -sticky nwse
+    grid $imopt.parSet.fcLbl -column 1 -row 0 -sticky nswe
+    grid $imopt.parSet.tv -column 0 -row 1 -columnspan 5 -rowspan 8 -sticky nswe
+    grid $imopt.parSet.scroll -column 5 -row 1 -rowspan 8 -sticky nswe
+
+    grid $imopt.parSet.import -column 6 -row 1 -sticky nwse -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.parSet.add -column 6 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.parSet.duplicate -column 6 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.parSet.move -column 6 -row 4 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid columnconfigure $imopt.parSet.move {0 1} -weight 1
+    grid $imopt.parSet.move.up -column 0 -row 0 -sticky nswe
+    grid $imopt.parSet.move.down -column 1 -row 0 -sticky nswe
+    grid $imopt.parSet.sep -column 6 -row 5 -sticky we -padx $hsepPadX -pady $hsepPadY
+
+    grid $imopt.parSet.delete -column 6 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.parSet.clear -column 6 -row 7 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.parSet.editLbl -column 0 -row 9 -sticky nswe
+    grid $imopt.parSet.editDef -column 0 -row 10 -sticky nswe -pady "0 5" 
+    grid $imopt.parSet.editFC -column 1 -row 10 -sticky nswe -pady "0 5" -padx 10
+    grid $imopt.parSet.editButtons -column 6 -row 10 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid columnconfigure $imopt.parSet.editButtons 0 -weight 1
+    grid columnconfigure $imopt.parSet.editButtons 1 -weight 1
+    grid $imopt.parSet.editButtons.accept -column 0 -row 0 -sticky nswe
+    grid $imopt.parSet.editButtons.cancel -column 1 -row 0 -sticky nswe
+
+
+    # ADVANCED SETTINGS
+    # -----------------
+    # build the advanced settings labels
+    ttk::labelframe $imopt.adv -labelanchor nw -padding $labelFrameInternalPadding
+    ttk::label $imopt.adv.lblWidget -text "$downPoint Advanced Settings" -anchor w -font TkDefaultFont
+    $imopt.adv configure -labelwidget $imopt.adv.lblWidget
+    ttk::label $imopt.advPlaceHolder -text "$rightPoint Advanced Settings" -anchor w -font TkDefaultFont
+
+    # set mouse click bindings to expand/contract
+    bind $imopt.adv.lblWidget <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.adv
+        grid .fftk_gui.hlf.nb.impropt.advPlaceHolder
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+    bind $imopt.advPlaceHolder <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.advPlaceHolder
+        grid .fftk_gui.hlf.nb.impropt.adv
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+
+    # build advanced settings section
+    ttk::frame $imopt.adv.dih
+    ttk::label $imopt.adv.dih.lbl -text "Improper Settings" -anchor w
+    ttk::label $imopt.adv.dih.kmaxLbl -text "Kmax:" -anchor w
+    ttk::entry $imopt.adv.dih.kmax -textvariable ::ForceFieldToolKit::DihOpt::kmaxImpr -width 8 -justify center
+    ttk::label $imopt.adv.dih.eCutoffLbl -text "Energy Cutoff" -anchor w
+    ttk::entry $imopt.adv.dih.eCutoff -textvariable ::ForceFieldToolKit::DihOpt::cutoff -width 8 -justify center
+    ttk::separator $imopt.adv.sep1 -orient horizontal
+    ttk::frame $imopt.adv.opt
+    ttk::label $imopt.adv.opt.lbl -text "Optimize Settings" -anchor w
+    ttk::label $imopt.adv.opt.tolLbl -text "Tolerance:" -anchor w
+    ttk::entry $imopt.adv.opt.tol -textvariable ::ForceFieldToolKit::DihOpt::tol -width 6 -justify center
+    ttk::label $imopt.adv.opt.modeLbl -text "Mode:" -anchor w
+    ttk::menubutton $imopt.adv.opt.mode -direction below -menu $imopt.adv.opt.mode.menu -textvariable ::ForceFieldToolKit::DihOpt::modeImpr -width 16
+    menu $imopt.adv.opt.mode.menu -tearoff no
+        $imopt.adv.opt.mode.menu add command -label "downhill" \
+            -command {
+                set ::ForceFieldToolKit::DihOpt::modeImpr downhill
+                grid remove .fftk_gui.hlf.nb.impropt.adv.opt.saSettings
+            }
+        $imopt.adv.opt.mode.menu add command -label "simulated annealing" \
+            -command {
+                set ::ForceFieldToolKit::DihOpt::modeImpr {simulated annealing}
+                grid .fftk_gui.hlf.nb.impropt.adv.opt.saSettings
+            }
+    ttk::frame $imopt.adv.opt.saSettings
+    ttk::label $imopt.adv.opt.saSettings.tempLbl -text "T:" -anchor w
+    ttk::entry $imopt.adv.opt.saSettings.temp -textvariable ::ForceFieldToolKit::DihOpt::saT -width 8 -justify center
+    ttk::label $imopt.adv.opt.saSettings.tStepsLbl -text "Tsteps:" -anchor w
+    ttk::entry $imopt.adv.opt.saSettings.tSteps -textvariable ::ForceFieldToolKit::DihOpt::saTSteps -width 8 -justify center
+    ttk::label $imopt.adv.opt.saSettings.iterLbl -text "Iter:" -anchor w
+    ttk::entry $imopt.adv.opt.saSettings.iter -textvariable ::ForceFieldToolKit::DihOpt::saIter -width 8 -justify center
+    ttk::label $imopt.adv.opt.saSettings.expLbl -text "TExp:" -anchor w
+    ttk::entry $imopt.adv.opt.saSettings.exp -textvariable ::ForceFieldToolKit::DihOpt::saTExp -width 8 -justify center
+    ttk::separator $imopt.adv.sep2 -orient horizontal
+    ttk::frame $imopt.adv.run
+    ttk::label $imopt.adv.run.lbl -text "Run Settings" -anchor w
+    ttk::checkbutton $imopt.adv.run.debugButton -offvalue 0 -onvalue 1 -variable ::ForceFieldToolKit::DihOpt::debug
+    ttk::label $imopt.adv.run.debugLbl -text "Write debugging log" -anchor w
+    ttk::checkbutton $imopt.adv.run.buildScriptButton -offvalue 0 -onvalue 1 -variable ::ForceFieldToolKit::gui::imoptBuildScript
+    ttk::label $imopt.adv.run.buildScriptLbl -text "Build run script"
+    ttk::checkbutton $imopt.adv.run.writeEnCompsButton -offvalue 0 -onvalue 1 -variable ::ForceFieldToolKit::DihOpt::WriteEnComps
+    ttk::label $imopt.adv.run.writeEnCompsLbl -text "Write Energy Comparison Data"
+    ttk::label $imopt.adv.run.outFreqLbl -text "Output Freq.:" -anchor w
+    ttk::entry $imopt.adv.run.outFreq -textvariable ::ForceFieldToolKit::DihOpt::outFreq -width 8 -justify center
+    ttk::checkbutton $imopt.adv.run.keepMMTraj -offvalue 0 -onvalue 1 -variable ::ForceFieldToolKit::DihOpt::keepMMTraj
+    ttk::label $imopt.adv.run.keepMMTrajLbl -text "Save MM Traj." -anchor w
+
+    # grid advanced settings section
+    grid $imopt.adv -column 0 -row 5 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid columnconfigure $imopt.adv 0 -weight 1
+    grid remove $imopt.adv
+    grid $imopt.advPlaceHolder -column 0 -row 5 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+    grid $imopt.adv.dih -column 0 -row 0 -sticky nswe
+    grid $imopt.adv.dih.lbl -column 0 -row 0 -columnspan 2 -sticky nswe
+    grid $imopt.adv.dih.kmaxLbl -column 0 -row 1 -sticky nswe
+    grid $imopt.adv.dih.kmax -column 1 -row 1 -sticky nswe
+    grid $imopt.adv.dih.eCutoffLbl -column 2 -row 1 -sticky nswe
+    grid $imopt.adv.dih.eCutoff -column 3 -row 1 -sticky nswe
+    grid $imopt.adv.sep1 -column 0 -row 1 -sticky we -pady 5
+    grid $imopt.adv.opt -column 0 -row 2 -sticky nswe
+    grid $imopt.adv.opt.lbl -column 0 -row 0 -columnspan 3 -sticky nswe
+    grid $imopt.adv.opt.tolLbl -column 0 -row 1 -sticky nswe
+    grid $imopt.adv.opt.tol -column 1 -row 1 -sticky nsw
+    grid $imopt.adv.opt.modeLbl -column 0 -row 2 -sticky nswe
+    grid $imopt.adv.opt.mode -column 1 -row 2 -sticky nswe
+    grid $imopt.adv.opt.saSettings -column 2 -row 2 -sticky we -padx "5 0"
+    grid $imopt.adv.opt.saSettings.tempLbl -column 0 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.temp -column 1 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.tStepsLbl -column 2 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.tSteps -column 3 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.iterLbl -column 4 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.iter -column 5 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.expLbl -column 6 -row 0 -sticky nswe
+    grid $imopt.adv.opt.saSettings.exp -column 7 -row 0 -sticky nswe
+    grid $imopt.adv.sep2 -column 0 -row 3 -sticky we -pady 5
+    grid $imopt.adv.run -column 0 -row 4 -sticky nswe
+    grid $imopt.adv.run.lbl -column 0 -row 0 -columnspan 2 -sticky nswe
+    grid $imopt.adv.run.debugButton -column 0 -row 1 -sticky nswe
+    grid $imopt.adv.run.debugLbl -column 1 -row 1 -sticky nswe -padx "0 10"
+    grid $imopt.adv.run.buildScriptButton -column 2 -row 1 -sticky nswe
+    grid $imopt.adv.run.buildScriptLbl -column 3 -row 1 -sticky nswe -padx "0 10"
+    # writeEnComps is not as useful with addition of Viz. Results
+    #grid $imopt.adv.run.writeEnCompsButton -column 4 -row 1 -sticky nswe
+    #grid $imopt.adv.run.writeEnCompsLbl -column 5 -row 1 -sticky nswe -padx "0 10"
+    grid $imopt.adv.run.outFreqLbl -column 6 -row 1 -sticky nswe
+    grid $imopt.adv.run.outFreq -column 7 -row 1 -sticky nswe -padx "0 10"
+    grid $imopt.adv.run.keepMMTraj -column 8 -row 1 -sticky nswe
+    grid $imopt.adv.run.keepMMTrajLbl -column 9 -row 1 -sticky nswe
+
+    # default is downhill
+    grid remove .fftk_gui.hlf.nb.impropt.adv.opt.saSettings
+
+
+    # RESULTS
+    # -------
+    # build the results section heading
+    ttk::labelframe $imopt.results -labelanchor nw -padding $labelFrameInternalPadding
+    ttk::label $imopt.results.lblWidget -text "$downPoint Visualize Results" -anchor w -font TkDefaultFont
+    $imopt.results configure -labelwidget $imopt.results.lblWidget
+    ttk::label $imopt.resultsPlaceHolder -text "$rightPoint Visualize Results" -anchor w -font TkDefaultFont
+
+    # set mouse click bindings to expand/contract
+    bind $imopt.results.lblWidget <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.results
+        grid .fftk_gui.hlf.nb.impropt.resultsPlaceHolder
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 6 -weight 0
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+    bind $imopt.resultsPlaceHolder <Button-1> {
+        grid remove .fftk_gui.hlf.nb.impropt.resultsPlaceHolder
+        grid .fftk_gui.hlf.nb.impropt.results
+        grid rowconfigure .fftk_gui.hlf.nb.impropt 6 -weight 1
+        ::ForceFieldToolKit::gui::resizeToActiveTab
+    }
+
+    # grid the results section heading
+    grid $imopt.results -column 0 -row 6 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
+    grid columnconfigure $imopt.results 0 -weight 1
+    grid rowconfigure $imopt.results 2 -weight 1
+    grid remove $imopt.results
+    grid $imopt.resultsPlaceHolder -column 0 -row 6 -sticky nswe -padx $placeHolderPadX -pady $placeHolderPadY
+
+    # PREAMBLE
+    # --------
+    # build the preamble Section
+    ttk::frame $imopt.results.preamble
+    ttk::label $imopt.results.preamble.lbl -text "Reference Data -- " -anchor w
+    ttk::label $imopt.results.preamble.qmeLbl -text "QME:" -anchor w
+    ttk::label $imopt.results.preamble.qmeStatusLbl -textvariable ::ForceFieldToolKit::gui::imoptQMEStatus -anchor w
+    ttk::label $imopt.results.preamble.mmeLbl -text "MMEi:" -anchor w
+    ttk::label $imopt.results.preamble.mmeStatusLbl -textvariable ::ForceFieldToolKit::gui::imoptMMEStatus -anchor w
+    ttk::label $imopt.results.preamble.imprAllLbl -text "imprAll:" -anchor w
+    ttk::label $imopt.results.preamble.imprAllStatusLbl -textvariable ::ForceFieldToolKit::gui::imoptImprAllStatus -anchor w
+
+    # grid the preamble Section
+    grid $imopt.results.preamble -column 0 -row 0 -sticky nswe -padx "10 0"
+    grid $imopt.results.preamble.lbl -column 0 -row 0 -sticky nswe
+    grid $imopt.results.preamble.qmeLbl -column 1 -row 0 -sticky nswe
+    grid $imopt.results.preamble.qmeStatusLbl -column 2 -row 0 -sticky nswe
+    grid $imopt.results.preamble.mmeLbl -column 3 -row 0 -sticky nswe
+    grid $imopt.results.preamble.mmeStatusLbl -column 4 -row 0 -sticky nswe
+    grid $imopt.results.preamble.imprAllLbl -column 5 -row 0 -sticky nswe
+    grid $imopt.results.preamble.imprAllStatusLbl -column 6 -row 0 -sticky nswe
+
+    # build/grid separator
+    ttk::separator $imopt.results.sep1 -orient horizontal
+    grid $imopt.results.sep1 -column 0 -row 1 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+
+    # DATA
+    # ----
+    # build the results data section
+    ttk::frame $imopt.results.data
+    ttk::label $imopt.results.data.dsetLbl -text "Data Set" -anchor center
+    ttk::label $imopt.results.data.rmseLbl -text "RMSE" -anchor center
+    ttk::label $imopt.results.data.colorLbl -text "Plot Color" -anchor center
+    ttk::treeview $imopt.results.data.tv -selectmode extended -yscrollcommand "$imopt.results.data.scroll set"
+        $imopt.results.data.tv configure -column {dset rmse color enData outPar} -displaycolumns {dset rmse color} -show {} -height 5
+        $imopt.results.data.tv heading dset -text "dset" -anchor center
+        $imopt.results.data.tv heading rmse -text "RMSE" -anchor center
+        $imopt.results.data.tv heading color -text "Plot Color" -anchor center
+        $imopt.results.data.tv column dset -width 100 -stretch 0 -anchor center
+        $imopt.results.data.tv column rmse -width 100 -stretch 0 -anchor center
+        $imopt.results.data.tv column color -width 100 -stretch 0 -anchor center
+    ttk::scrollbar $imopt.results.data.scroll -orient vertical -command "$imopt.results.data.tv yview"
+    bind $imopt.results.data.tv <KeyPress-Escape> { .fftk_gui.hlf.nb.impropt.results.data.tv selection remove [.fftk_gui.hlf.nb.impropt.results.data.tv children {}] }
+
+    ttk::label $imopt.results.data.editColorLbl -text "Set Data Color:" -anchor w
+    ttk::menubutton $imopt.results.data.editColor -direction below -menu $imopt.results.data.editColor.menu -textvariable ::ForceFieldToolKit::gui::imoptEditColor -width 12
+    menu $imopt.results.data.editColor.menu -tearoff no
+        $imopt.results.data.editColor.menu add command -label "blue" -command { set ::ForceFieldToolKit::gui::imoptEditColor "blue"; ::ForceFieldToolKit::gui::imoptSetColor }
+        $imopt.results.data.editColor.menu add command -label "green" -command { set ::ForceFieldToolKit::gui::imoptEditColor "green"; ::ForceFieldToolKit::gui::imoptSetColor }
+        #$imopt.results.data.editColor.menu add command -label "red" -command { set ::ForceFieldToolKit::gui::imoptEditColor "red"; ::ForceFieldToolKit::gui::imoptSetColor }
+        $imopt.results.data.editColor.menu add command -label "cyan" -command { set ::ForceFieldToolKit::gui::imoptEditColor "cyan"; ::ForceFieldToolKit::gui::imoptSetColor }
+        $imopt.results.data.editColor.menu add command -label "magenta" -command { set ::ForceFieldToolKit::gui::imoptEditColor "magenta"; ::ForceFieldToolKit::gui::imoptSetColor }
+        $imopt.results.data.editColor.menu add command -label "orange" -command { set ::ForceFieldToolKit::gui::imoptEditColor "orange"; ::ForceFieldToolKit::gui::imoptSetColor }
+        $imopt.results.data.editColor.menu add command -label "purple" -command { set ::ForceFieldToolKit::gui::imoptEditColor "purple"; ::ForceFieldToolKit::gui::imoptSetColor }
+        $imopt.results.data.editColor.menu add command -label "yellow" -command { set ::ForceFieldToolKit::gui::imoptEditColor "yellow"; ::ForceFieldToolKit::gui::imoptSetColor }
+
+    ttk::button $imopt.results.data.plot -text "Plot Selected" \
+        -command {
+            # simple validation
+            if { [llength $::ForceFieldToolKit::DihOpt::EnQM] == 0 || [llength $::ForceFieldToolKit::DihOpt::EnMM] == 0 } { tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "No data loaded."; return }
+            # aggregate the datasets
+            set datasets {}; set colorsets {}; set legend {}
+            if { $::ForceFieldToolKit::gui::imoptPlotQME } {
+                lappend datasets $::ForceFieldToolKit::DihOpt::EnQM
+                lappend colorsets black
+                lappend legend QME
+            }
+            if { $::ForceFieldToolKit::gui::imoptPlotMME } {
+                lappend datasets $::ForceFieldToolKit::DihOpt::EnMM
+                lappend colorsets red
+                lappend legend MMEi
+            }
+            foreach item2plot [.fftk_gui.hlf.nb.impropt.results.data.tv selection] {
+                lappend datasets [.fftk_gui.hlf.nb.impropt.results.data.tv set $item2plot enData]
+                lappend colorsets [.fftk_gui.hlf.nb.impropt.results.data.tv set $item2plot color]
+                lappend legend [.fftk_gui.hlf.nb.impropt.results.data.tv set $item2plot dset]
+            }
+            # plot the datasets
+            ::ForceFieldToolKit::gui::doptBuildPlotWin
+            ::ForceFieldToolKit::gui::doptPlotData $datasets $colorsets $legend
+            unset datasets
+            unset colorsets
+            unset legend
+        }
+
+    ttk::frame $imopt.results.data.refdata
+    ttk::checkbutton $imopt.results.data.refdata.qmePlotCheckbox -offvalue 0 -onvalue 1 -variable ::ForceFieldToolKit::gui::imoptPlotQME
+    ttk::label $imopt.results.data.refdata.qmePlotLbl -text "Include QME" -anchor w
+    ttk::checkbutton $imopt.results.data.refdata.mmePlotCheckbox -offvalue 0 -onvalue 1 -variable ::ForceFieldToolKit::gui::imoptPlotMME
+    ttk::label $imopt.results.data.refdata.mmePlotLbl -text "Include MMEi" -anchor w
+
+    ttk::separator $imopt.results.data.sep1 -orient horizontal
+    ttk::frame $imopt.results.data.remove
+    ttk::button $imopt.results.data.remove.delete -text "Delete" -command { .fftk_gui.hlf.nb.impropt.results.data.tv delete [.fftk_gui.hlf.nb.impropt.results.data.tv selection] }
+    ttk::button $imopt.results.data.remove.clear -text "Clear" -command { .fftk_gui.hlf.nb.impropt.results.data.tv delete [.fftk_gui.hlf.nb.impropt.results.data.tv children {}] }
+
+    # grid results data section
+    grid $imopt.results.data -column 0 -row 2 -sticky nswe
+    grid columnconfigure $imopt.results.data 0 -weight 0 -minsize 100
+    grid columnconfigure $imopt.results.data 1 -weight 0 -minsize 100
+    grid columnconfigure $imopt.results.data 2 -weight 0 -minsize 100
+    grid columnconfigure $imopt.results.data 5 -weight 1
+    grid rowconfigure $imopt.results.data {1 2 3 5} -uniform rt1
+    grid rowconfigure $imopt.results.data 6 -weight 1
+
+    grid $imopt.results.data.dsetLbl -column 0 -row 0 -sticky nswe
+    grid $imopt.results.data.rmseLbl -column 1 -row 0 -sticky nswe
+    grid $imopt.results.data.colorLbl -column 2 -row 0 -sticky nswe
+    grid $imopt.results.data.tv -column 0 -row 1 -columnspan 3 -rowspan 6 -sticky nswe
+    grid $imopt.results.data.scroll -column 3 -row 1 -rowspan 6 -sticky nswe
+
+    grid $imopt.results.data.editColorLbl -column 4 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.results.data.editColor -column 4 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid $imopt.results.data.plot -column 4 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+
+    grid $imopt.results.data.refdata -column 4 -row 4 -sticky nswe -padx 4 -pady "5 0"
+    grid $imopt.results.data.refdata.qmePlotCheckbox -column 0 -row 0 -sticky nswe
+    grid $imopt.results.data.refdata.qmePlotLbl -column 1 -row 0 -sticky nswe
+    grid $imopt.results.data.refdata.mmePlotCheckbox -column 2 -row 0 -sticky nswe -padx "5 0"
+    grid $imopt.results.data.refdata.mmePlotLbl -column 3 -row 0 -sticky nswe
+
+    grid $imopt.results.data.sep1 -column 4 -row 5 -columnspan 1 -sticky nswe -padx $hsepPadX -pady $hsepPadY
+    grid $imopt.results.data.remove -column 4 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
+    grid columnconfigure $imopt.results.data.remove {0 1} -weight 1
+    grid $imopt.results.data.remove.delete -column 0 -row 0 -sticky nswe
+    grid $imopt.results.data.remove.clear -column 1 -row 0 -sticky nswe
+
+    # build/grid a separator
+    ttk::separator $imopt.sep1 -orient horizontal
+    grid $imopt.sep1 -column 0 -row 9 -sticky we -padx $hsepPadX -pady $hsepPadY
+
+
+    # RUN
+    # ---
+    # build the run section
+    ttk::frame $imopt.status
+    ttk::label $imopt.status.lbl -text "Status:" -anchor w
+    ttk::label $imopt.status.txt -textvariable ::ForceFieldToolKit::gui::imoptStatus -anchor w
+    ttk::button $imopt.runOpt -text "Run Optimization" -command {
+#            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
+#              ::ForceFieldToolKit::ORCA::tempORCAmessage
+#              return
+#            }
+	    ::ForceFieldToolKit::gui::imoptRunOpt 
+	    }
+
+    # grid the run section
+    grid $imopt.status -column 0 -row 10 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid columnconfigure $imopt.status 1 -weight 1
+    grid $imopt.status.lbl -column 0 -row 0 -sticky nswe
+    grid $imopt.status.txt -column 1 -row 0 -sticky nswe
+
+    grid $imopt.runOpt -column 0 -row 11 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
+    grid rowconfigure $imopt 11 -minsize 50 -weight 0
+
+#--------------------------------------------------------------------------
+
+    # By default, hide the impr tabs on startup
+    $w.hlf.nb hide $w.hlf.nb.genImprScan
+    $w.hlf.nb hide $w.hlf.nb.impropt
+    set ::ForceFieldToolKit::gui::dihImprSelectMethod "Dihedral fitting"
 
 #--------------------------------------------------------------------------
 

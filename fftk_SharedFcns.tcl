@@ -990,11 +990,11 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP { psf pdb } {
     # generate a psf wihtout lone pair
     
     set molID [mol new $psf]
+    mol addfile $pdb
     set all [atomselect $molID all]
     set nolp [atomselect $molID "mass > 0"]
 
     if {[$all num] > [$nolp num]} {
-        mol addfile $pdb
         $nolp writepsf "nolp.psf"
         $nolp writepdb "nolp.pdb"
 
@@ -1216,7 +1216,7 @@ proc ::ForceFieldToolKit::SharedFcns::checkWhichQM { outFile } {
     while { ![eof $inFile] } { 
 	set line [string trim [string map { \" {} } [gets $inFile]]]
 	# Check if Gaussian
-	if { [string match -nocase "*Gaussian, Inc.  All Rights Reserved*" $line] } {
+	if { [string match -nocase "*Gaussian, Inc.*" $line] } {
 	       set NameQM "Gaussian"
                break 
 	# Check if ORCA
