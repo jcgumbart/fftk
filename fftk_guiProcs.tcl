@@ -96,6 +96,7 @@ proc ::ForceFieldToolKit::gui::init {} {
     set ::ForceFieldToolKit::gui::baoptReturnObjPrevious "---"
 
     # GenDihScan Tab Setup
+    set ::ForceFieldToolKit::gui::dihImprMethod "Dihedral fitting"
     # Initialize GenDihScan Namespace
     ::ForceFieldToolKit::GenDihScan::init
     # Initialize GUI Settings
@@ -105,6 +106,14 @@ proc ::ForceFieldToolKit::gui::init {} {
     set ::ForceFieldToolKit::gui::gdsEditIndDef {}
     set ::ForceFieldToolKit::gui::gdsEditPlusMinus {}
     set ::ForceFieldToolKit::gui::gdsEditStepSize {}
+
+    # Initialize GUI Settings
+    set ::ForceFieldToolKit::gui::imsAtomLabels {}
+    set ::ForceFieldToolKit::gui::imsRepName {}
+    # Clear Edit Data Boxes
+    set ::ForceFieldToolKit::gui::imsEditIndDef {}
+    set ::ForceFieldToolKit::gui::imsEditPlusMinus {}
+    set ::ForceFieldToolKit::gui::imsEditStepSize {}
 
 
     # DihOpt Tabl Setup
@@ -135,6 +144,35 @@ proc ::ForceFieldToolKit::gui::init {} {
     set ::ForceFieldToolKit::gui::doptResultsPlotCount {}
     set ::ForceFieldToolKit::gui::doptRefineStatus "IDLE"
     set ::ForceFieldToolKit::gui::doptRefineCount 0
+
+    # ImprOpt Tabl Setup
+#    # Initialize DihOpt Namespace
+#    ::ForceFieldToolKit::DihOpt::init
+    # Initialize ImprOpt GUI Settings
+    set ::ForceFieldToolKit::gui::imoptStatus "IDLE"
+    set ::ForceFieldToolKit::gui::imoptBuildScript 0
+    set ::ForceFieldToolKit::gui::imoptPlotQME 1
+    set ::ForceFieldToolKit::gui::imoptPlotMME 1
+    # Clear Edit Data Boxes
+    set ::ForceFieldToolKit::gui::imoptEditDef {}
+    set ::ForceFieldToolKit::gui::imoptEditFC {}
+##    set ::ForceFieldToolKit::gui::imoptEditMult {}
+##    set ::ForceFieldToolKit::gui::imoptEditDelta {}
+##    set ::ForceFieldToolKit::gui::imoptEditLock {}
+##    set ::ForceFieldToolKit::gui::imoptRefineEditDef {}
+##    set ::ForceFieldToolKit::gui::imoptRefineEditFC {}
+##    set ::ForceFieldToolKit::gui::imoptRefineEditMult {}
+##    set ::ForceFieldToolKit::gui::imoptRefineEditDelta {}
+##    set ::ForceFieldToolKit::gui::imoptRefineEditLock {}
+    set ::ForceFieldToolKit::gui::imoptQMEStatus "EMPTY"
+    set ::ForceFieldToolKit::gui::imoptMMEStatus "EMPTY"
+    set ::ForceFieldToolKit::gui::imoptImprAllStatus "EMPTY"
+    set ::ForceFieldToolKit::gui::imoptEditColor {}
+    set ::ForceFieldToolKit::gui::imoptResultsPlotHandle {}
+    set ::ForceFieldToolKit::gui::imoptResultsPlotWin {}
+    set ::ForceFieldToolKit::gui::imoptResultsPlotCount {}
+##    set ::ForceFieldToolKit::gui::imoptRefineStatus "IDLE"
+##    set ::ForceFieldToolKit::gui::imoptRefineCount 0
 
 
     # INITIALIZE THE CONSOLE
@@ -1113,6 +1151,71 @@ proc ::ForceFieldToolKit::gui::coptSelectMethod { method } {
             puts "invalid argument passed to ::ForceFieldToolKit::gui::coptSelectMethod"
             puts "Passed Method: $method"
             puts "Currently supported methods: waterInt, resp"
+            flush stdout
+            return
+        }
+    }
+
+    # showing/hiding will likely require resizing the plugin
+    update idletasks
+    ::ForceFieldToolKit::gui::resizeToActiveTab
+}
+#======================================================
+
+#------------------------------------------------------
+# DIH/IMPR OPTMIZATION
+#------------------------------------------------------
+# Support for new methods requires method selector
+proc ::ForceFieldToolKit::gui::dihImprSelectMethod { method } {
+    # Swaps out the appropriate notebook tabs based on the selected method
+    # Passed: dih/impr optimization 
+    # Returns: nothing
+
+    # hardcoded identity of notebooks
+    set nbRoot .fftk_gui.hlf.nb
+    set dihTabIDs {genDihScan dihopt}
+    set imprTabIDs   {genImprScan impropt}
+
+    # Query the currently active tab
+    set activeTab [.fftk_gui.hlf.nb index current]
+
+    switch -exact $method {
+        "dih" {
+            # hide the improper tabs
+            foreach w $imprTabIDs { eval $nbRoot hide [join [list $nbRoot $w] "."] }
+            # show the dihedral tabs
+            foreach w $dihTabIDs { eval $nbRoot add [join [list $nbRoot $w] "."] }
+            # activate the correct tab
+            set ::ForceFieldToolKit::gui::dihImprMethod "Dihedral fitting"
+            if { $activeTab == 8 || $activeTab == 9 } {
+                .fftk_gui.hlf.nb select 8
+            } elseif { $activeTab == 10 || $activeTab == 11 } {
+                .fftk_gui.hlf.nb select 10
+            } else {
+                .fftk_gui.hlf.nb select $activeTab
+            }
+        }
+        "impr" {
+            # hide the dihedral tabs
+            foreach w $dihTabIDs { eval $nbRoot hide [join [list $nbRoot $w] "."] }
+            # show the improper tabs
+            foreach w $imprTabIDs { eval $nbRoot add [join [list $nbRoot $w] "."] }
+            set ::ForceFieldToolKit::gui::dihImprMethod "Improper fitting"
+            # activate the correct tab
+            if { $activeTab == 8 || $activeTab == 9 } {
+                .fftk_gui.hlf.nb select 9
+            } elseif { $activeTab == 10 || $activeTab == 11 } {
+                .fftk_gui.hlf.nb select 11
+            } else {
+                .fftk_gui.hlf.nb select $activeTab
+            }
+        }
+        default { 
+            # invalid method passed for some unknown reason
+            # don't do anything
+            puts "invalid argument passed to ::ForceFieldToolKit::gui::dihImprSelectMethod"
+            puts "Passed Method: $method"
+            puts "Currently supported methods: dih, impr"
             flush stdout
             return
         }
@@ -2205,6 +2308,27 @@ proc ::ForceFieldToolKit::gui::gdsToggleLabels {} {
         }
     }
 }
+#------------------------------------------------------
+# GenImprScan Specific
+#------------------------------------------------------
+#======================================================
+proc ::ForceFieldToolKit::gui::imsToggleLabels {} {
+    # toggles atom labels for TOP molecule
+
+    variable imsAtomLabels
+
+    if { [llength $imsAtomLabels] > 0 } {
+        foreach label $imsAtomLabels {graphics top delete $label}
+        set imsAtomLabels {}
+    } else {
+        draw color lime
+        foreach ind [[atomselect top all] get index] {
+            set sel [atomselect top "index $ind"]
+            lappend imsAtomLabels [draw text [join [$sel get {x y z}]] $ind size 3]
+            $sel delete
+        }
+    }
+}
 #======================================================
 proc ::ForceFieldToolKit::gui::gdsImportDihedrals { psf pdb parfile } {
     # reads in a molecule and parameter file
@@ -2313,13 +2437,96 @@ proc ::ForceFieldToolKit::gui::gdsImportDihedrals { psf pdb parfile } {
 
 }
 #======================================================
-proc ::ForceFieldToolKit::gui::gdsShowSelRep {} {
+proc ::ForceFieldToolKit::gui::imsImportImpropers { psf pdb parfile } {
+    # reads in a molecule and parameter file
+    # if the molecule contains impropers that are defined in the parfile
+    # returns the indices
+
+    # validation
+    set errorList {}
+    set errorText ""
+
+    if { $psf eq "" || ![file exists $psf] } { lappend errorList "Cannot find PSF file." }
+    if { $pdb eq "" || ![file exists $pdb] } { lappend errorList "Cannot find PDB file." }
+    if { $parfile eq "" || ![file exists $parfile] } { lappend errorList "Cannot find parameter file." }
+
+    if { $errorList > 0 } {
+        foreach ele $errorList {
+            set errorText [concat $errorText\n$ele]
+        }
+        tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail $errorText
+        return
+    }
+
+
+    # read the parameter file and parse out the impropers section
+    set imprPars [lindex [::ForceFieldToolKit::SharedFcns::readParFile $parfile] 3]
+    # build a 1D search index of unique type defs
+    set imprTypeIndex {}
+    foreach impr $imprPars {
+        lappend imprTypeIndex [lindex $impr 0]
+    }
+    set imprTypeIndex [lsort -unique $imprTypeIndex]
+
+    # load the molecule
+    mol new $psf; mol addfile $pdb
+
+    # grab the indices for all dihedrals (parse out only index information)
+    set indDefList {}
+    foreach entry [topo getimproperlist] {
+        lappend indDefList [lrange $entry 1 4]
+    }
+
+    # convert the index def list to type def list and element def list
+    set typeDefList {}
+    set eleDefList {}
+    # cycle through each dihedral
+    foreach impr $indDefList {
+        set typeDef {}
+        set eleDef {}
+        # cycle through each index
+        foreach ind $impr {
+            set temp [atomselect top "index $ind"]
+            lappend typeDef [$temp get type]
+            lappend eleDef [$temp get element]
+            $temp delete
+        }
+        # write the full typeDef to the list
+        lappend typeDefList $typeDef
+        lappend eleDefList $eleDef
+    }
+
+    # cycle through the typeDefLst
+    # if the typeDef is in the imprTypeIndex (from par file),
+    # then grab the index definition
+    set returnData {}
+    for {set i 0} {$i < [llength $typeDefList]} {incr i} {
+        if { [lsearch -exact $imprTypeIndex [lindex $typeDefList $i]] != -1 || \
+             [lsearch -exact $imprTypeIndex [lreverse [lindex $typeDefList $i]]] != -1 } {
+            # append the data to return
+            lappend returnData [lindex $indDefList $i]
+        } else {
+            continue
+        }
+    }
+
+
+    # clean up
+    mol delete top
+
+    # return the data
+    return $returnData
+
+}
+#======================================================
+proc ::ForceFieldToolKit::gui::gdsShowSelRep { } {
     # shows a representation of the selected tv entries in VMD
     # via a CPK representation
 
     # build a list of indices to include in the representation
     # based on the tv selection
     set indexList {}
+  
     foreach ele [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv selection] {
         foreach ind [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv set $ele indDef] {
             lappend indexList $ind
@@ -2346,6 +2553,44 @@ proc ::ForceFieldToolKit::gui::gdsShowSelRep {} {
     } else {
         # update the old rep
         set currRepId [mol repindex top $::ForceFieldToolKit::gui::gdsRepName]
+        mol modselect $currRepId top "index $indexList"
+    }
+}
+#======================================================
+proc ::ForceFieldToolKit::gui::imsShowSelRep { } {
+    # shows a representation of the selected tv entries in VMD
+    # via a CPK representation
+
+    # build a list of indices to include in the representation
+    # based on the tv selection
+    set indexList {}
+  
+    foreach ele [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv selection] {
+        foreach ind [.fftk_gui.hlf.nb.genImprScan.imprs2scan.tv set $ele indDef] {
+            lappend indexList $ind
+        }
+    }
+
+    # build a list of rep names for the top molecule
+    set currRepNames {}
+    for {set i 0} {$i < [molinfo top get numreps]} {incr i} {
+        lappend currRepNames [mol repname top $i]
+    }
+
+    # determine if there is already a representation in place
+    # and if that rep still exists (i.e., the user hasn't deleted it)
+    if { $::ForceFieldToolKit::gui::imsRepName eq "" || [lsearch $currRepNames $::ForceFieldToolKit::gui::imsRepName] == -1 } {
+        # we need a new rep
+        mol selection "index $indexList"
+        mol representation CPK
+        mol color Name
+        mol addrep top
+
+        set ::ForceFieldToolKit::gui::imsRepName [mol repname top [expr {[molinfo top get numreps]-1}]]
+
+    } else {
+        # update the old rep
+        set currRepId [mol repindex top $::ForceFieldToolKit::gui::imsRepName]
         mol modselect $currRepId top "index $indexList"
     }
 }
@@ -2606,6 +2851,15 @@ proc ::ForceFieldToolKit::gui::doptSetColor {} {
 
     foreach dataId [.fftk_gui.hlf.nb.dihopt.results.data.tv selection] {
         .fftk_gui.hlf.nb.dihopt.results.data.tv set $dataId color $::ForceFieldToolKit::gui::doptEditColor
+    }
+}
+#======================================================
+proc ::ForceFieldToolKit::gui::imoptSetColor {} {
+    # sets the color for all selected data sets
+    # very simple program, but simplifies menu construction
+
+    foreach dataId [.fftk_gui.hlf.nb.impropt.results.data.tv selection] {
+        .fftk_gui.hlf.nb.impropt.results.data.tv set $dataId color $::ForceFieldToolKit::gui::imoptEditColor
     }
 }
 #======================================================
@@ -2999,6 +3253,103 @@ proc ::ForceFieldToolKit::gui::doptLogWriter { filename rmse mmef parData } {
 
     # clean up
     close $outFile
+
+}
+#======================================================
+
+
+#------------------------------------------------------
+# ImproperOpt Specific
+#------------------------------------------------------
+proc ::ForceFieldToolKit::gui::imoptRunOpt {} {
+    # procedure for button to run the improper optimization
+
+    # do we need improper-specific versions of these files???
+    # initialize/reset some variables that will explicitely set by GUI
+    set ::ForceFieldToolKit::DihOpt::parlist {}
+    set ::ForceFieldToolKit::DihOpt::GlogFiles {}
+    set ::ForceFieldToolKit::DihOpt::parDataInput {}
+
+    # build the parameter files list (parlist) from the TV box
+    foreach tvItem [.fftk_gui.hlf.nb.impropt.input.parFiles children {}] {
+        lappend ::ForceFieldToolKit::DihOpt::parlist [lindex [.fftk_gui.hlf.nb.impropt.input.parFiles item $tvItem -values] 0]
+    }
+
+    # build the gaussian log files list (qm target data) from the TV box
+    foreach tvItem [.fftk_gui.hlf.nb.impropt.qmt.tv children {}] {
+        lappend ::ForceFieldToolKit::DihOpt::GlogFiles [.fftk_gui.hlf.nb.impropt.qmt.tv item $tvItem -values]
+    }
+
+    # build the parameter data input list
+    # requires the form:
+    # {
+    #   {typedef} {k mult delta lock}
+    # }
+    # impropers have 0 multiplicity, 0 offset
+    #
+    foreach tvItem [.fftk_gui.hlf.nb.impropt.parSet.tv children {}] {
+        set imprPars [.fftk_gui.hlf.nb.impropt.parSet.tv item $tvItem -values]
+        set typeDef {}
+        foreach atype [lindex $imprPars 0] { lappend typeDef $atype }
+        set fc [lindex $imprPars 1]
+         lappend ::ForceFieldToolKit::DihOpt::parDataInput [list $typeDef [list $fc 0 0.0 0]]
+
+    }
+
+    if { $::ForceFieldToolKit::gui::imoptBuildScript } {
+        # build a script instead of running directly
+        set ::ForceFieldToolKit::gui::imoptStatus "Writing to script..."
+        update idletasks
+        ::ForceFieldToolKit::DihOpt::buildScriptImpr [file dirname $::ForceFieldToolKit::DihOpt::outFileNameImpr]/ImprOptScript.tcl
+        #puts "the build script function is not currently implemented"
+        set ::ForceFieldToolKit::gui::imoptStatus "IDLE"
+        ::ForceFieldToolKit::gui::consoleMessage "Improper optimization run script written"
+    } else {
+        # run optimization directly
+        set ::ForceFieldToolKit::gui::imoptStatus "Running..."
+        ::ForceFieldToolKit::gui::consoleMessage "Improper optimization started"
+        update idletasks
+        set finalOptData [::ForceFieldToolKit::DihOpt::optimizeImpr]
+        if { $finalOptData == -1 } {
+            set ::ForceFieldToolKit::gui::imoptStatus "Halted on ERROR"
+            ::ForceFieldToolKit::gui::consoleMessage "Improper optimization halted on error"
+            update idletasks
+            return
+        }
+        set ::ForceFieldToolKit::gui::imoptStatus "Loading Results..."
+        update idletasks
+
+        # test QME, MMEi, and dihAll; update status labels in Vis. Results accordingly
+        if { [llength $::ForceFieldToolKit::DihOpt::EnQM] != 0 } {
+            set ::ForceFieldToolKit::gui::imoptQMEStatus "Loaded"
+        } else {
+            set ::ForceFieldToolKit::gui::imoptQMEStatus "ERROR"
+        }
+        if { [llength $::ForceFieldToolKit::DihOpt::EnMM] != 0 } {
+            set ::ForceFieldToolKit::gui::imoptMMEStatus "Loaded"
+        } else {
+            set ::ForceFieldToolKit::gui::imoptMMEStatus "ERROR"
+        }
+        if { [llength $finalOptData] != 0 } {
+            set ::ForceFieldToolKit::gui::imoptImprAllStatus "Loaded"
+        } else {
+            set ::ForceFieldToolKit::gui::imoptImprAllStatus "ERROR"
+        }
+        update idletasks
+
+        # clear the Vis. Results treeview
+        .fftk_gui.hlf.nb.impropt.results.data.tv delete [.fftk_gui.hlf.nb.impropt.results.data.tv children {}]
+        # add the data to the Vis. Results treeview
+        .fftk_gui.hlf.nb.impropt.results.data.tv insert {} end -values [list "orig" [format "%.3f" [lindex $finalOptData 0]] "blue" [lindex $finalOptData 1] [lindex $finalOptData 2]]
+
+        # update the status label
+        set ::ForceFieldToolKit::gui::imoptStatus "IDLE"
+        ::ForceFieldToolKit::gui::consoleMessage "Improper optimization finished"
+        update idletasks
+
+    }
+
+    # DONE
 
 }
 #======================================================

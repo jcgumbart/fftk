@@ -55,6 +55,10 @@ namespace eval ::ForceFieldToolKit::DihOpt {
 
     variable fixScanned
 
+    variable kmaxImpr
+    variable modeImpr
+    variable outFileNameImpr
+
 }
 #======================================================
 proc ::ForceFieldToolKit::DihOpt::init {} {
@@ -106,6 +110,10 @@ proc ::ForceFieldToolKit::DihOpt::init {} {
 
     variable fixScanned
 
+    variable kmaxImpr
+    variable modeImpr
+    variable outFileNameImpr
+
     # Initialize the variables
     set GlogFiles {}
     set psf {}
@@ -149,6 +157,10 @@ proc ::ForceFieldToolKit::DihOpt::init {} {
 
     set fixScanned 1
 
+    set kmaxImpr 200.0
+    set modeImpr "downhill"
+    set outFileNameImpr "ImprOpt.log"
+
 }
 #======================================================
 proc ::ForceFieldToolKit::DihOpt::sanityCheck { procType } {
@@ -189,6 +201,10 @@ proc ::ForceFieldToolKit::DihOpt::sanityCheck { procType } {
     variable refinesaTSteps
     variable refinesaIter
     variable refinesaTExp
+
+    variable kmaxImpr
+    variable modeImpr
+    variable outFileNameImpr
 
     variable debug
 
@@ -260,8 +276,9 @@ proc ::ForceFieldToolKit::DihOpt::sanityCheck { procType } {
                          ![string is double [lindex $dih 1 0]] || \
                          [lindex $dih 1 0] < 0 } { lappend errorList "Found inappropriate dihedral k." }
                     # check periodicity/mult
+                    # allow zero for impropers
                     if { [lindex $dih 1 1] eq "" || \
-                         [lindex $dih 1 1] < 1 || \
+                         [lindex $dih 1 1] < 0 || \
                          [lindex $dih 1 1] > 6 || \
                          ![string is integer [lindex $dih 1 1]] } { lappend errorList "Found inappropriate dihedral n (periodicity)." }
                     # check phase shift
@@ -462,14 +479,17 @@ proc ::ForceFieldToolKit::DihOpt::optimize {} {
     if { $debug } {
         set debugLog [open "[file rootname $outFileName].debug.log" w]
         ::ForceFieldToolKit::DihOpt::printSettings $debugLog
+    } else {
+        set debugLog ""
     }
+
+
+
 
     # -------
     # QM DATA
     # -------
     # parse output files (QMdata)
-    set debugLog ""
-puts $debugLog
     set QMdata [::ForceFieldToolKit::DihOpt::parseGlog $GlogFiles $debug $debugLog $guiMode ]
     # in the form: {  {dih indicies (0-based)} currDihVal QME {xyz coords} ...  }
     puts $outFile "QM data read from:"
@@ -710,10 +730,10 @@ puts $debugLog
     } elseif { $mode eq "simulated annealing" } {
         set opt [optimization -annealing -tol $tol -T $saT -iter $saIter -Tsteps $saTSteps -Texp $saTExp -function ::ForceFieldToolKit::DihOpt::optDih]
     } else {
-        if { $debug } {puts $debugLog "ERROR: Unsupported optimziation mode.  Currently \"downhill\" and \"simulated annealing\" are supported"; flush $debugLog }
-        error "ERROR: Unsupported optimziation mode.  Currently \"downhill\" and \"simulated annealing\" are supported"
+        if { $debug } {puts $debugLog "ERROR: Unsupported optimization mode.  Currently \"downhill\" and \"simulated annealing\" are supported"; flush $debugLog }
+        error "ERROR: Unsupported optimization mode.  Currently \"downhill\" and \"simulated annealing\" are supported"
     }
-
+    
     $opt configure -bounds $bounds
     $opt initsimplex $init 1.0
 
@@ -820,6 +840,419 @@ puts $debugLog
 #        }
 #        return [list [lindex $result 1] $EnMMf $returnParList]
 #    }
+
+}
+#======================================================
+proc ::ForceFieldToolKit::DihOpt::optimizeImpr {} {
+    # launches and controls the improper optimization
+
+    # variables
+    variable outFile
+    variable outFileNameImpr
+    variable debug
+    variable debugLog
+    variable guiMode
+
+    variable GlogFiles
+    #variable psf
+    set psf $::ForceFieldToolKit::Configuration::chargeOptPSF
+    #variable pdb
+    set pdb $::ForceFieldToolKit::Configuration::geomOptPDB
+    variable parDataInput
+
+    variable QMdata
+    variable MMdata
+    variable EnQM
+    variable EnMM
+    variable weights
+    variable cutoff
+
+    variable parlist
+
+    variable kmaxImpr
+    variable psiList
+
+    variable globalCount
+    variable outFreq
+
+    variable modeImpr
+    variable tol
+    variable saT
+    variable saIter
+    variable saTSteps
+    variable saTExp
+
+    variable masterTypeList
+
+    set PI 3.14159265359
+
+    # -----
+    # SETUP
+    # -----
+    if { $guiMode } {
+        # run a sanity check
+        if { ![::ForceFieldToolKit::DihOpt::sanityCheck opt] } { return -1 }
+    }
+
+    set outFile [open $outFileNameImpr w]
+    if { $debug } {
+        set debugLog [open "[file rootname $outFileNameImpr].debug.log" w]
+        ::ForceFieldToolKit::DihOpt::printSettings $debugLog
+    } else {
+        set debugLog ""
+    }
+
+    # -------
+    # QM DATA
+    # -------
+    # parse output files (QMdata)
+    set QMdata [::ForceFieldToolKit::DihOpt::parseGlog $GlogFiles $debug $debugLog $guiMode ]
+    # in the form: {  {impr indices (0-based)} currDihVal QME {xyz coords} ...  }
+    puts $outFile "QM data read from:"
+    foreach log $GlogFiles {
+        puts $outFile "\t$log"
+    }
+    flush $outFile
+
+    # Write the QMdata to the log file
+    # this is important, as it may be read in for refinement routine
+    puts $outFile "\nQMDATA"
+    foreach ele $QMdata {
+        puts $outFile $ele
+    }
+    puts $outFile "END\n"
+    flush $outFile
+
+    # patch lone pair
+    set molID [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
+    mol addfile $pdb
+    set lp_num [::ForceFieldToolKit::SharedFcns::LonePair::numLP]
+    if {$lp_num > 0} {
+        for {set i 0} { $i < [llength $QMdata] } { incr i } {
+            set QMcoords [lindex $QMdata $i 3]
+            lset QMdata $i 3 [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $QMcoords]
+
+            # TODO: modify $QMdata $i 0 to make sure the atom index matches after adding lp
+        }
+    }
+    mol delete $molID
+
+    # load QM conformations into VMD
+    ::ForceFieldToolKit::DihOpt::vmdLoadQMData $psf $pdb $QMdata
+
+    # Impropers (and bonds/angles for that matter) should be fit on the QM 
+    # geometries WITHOUT relaxation according to Vanommeslaeghe, Yang, MacKerell. 
+    # Robustness in the fitting of molecular mechanics parameters. JCC 2015.
+ 
+    # There is a 1-1 correspondence between scanned and fitted impropers.
+
+    puts $outFile "\nImpropers to be fit:"
+    set masterTypeList ""
+    set klist ""
+    foreach impr $parDataInput {
+        puts $outFile [lindex $impr 0]
+        lappend masterTypeList [lindex $impr 0]
+        lappend klist [lindex $impr 1 0]
+    }
+    flush $outFile
+
+    # -------
+    # MM DATA
+    # -------
+    # compute the MM energy (with optimizing impr terms zeroed out)
+
+    puts $outFile "\nPSF\n$psf\nEND"
+    puts $outFile "\nPDB\n$pdb\nEND\n"
+    flush $outFile
+
+    # write a temporary parameter file to zero out parameters for each impr 
+    # this is to protect against impr par definitions that we wish to optimize, 
+    # but might be present in other parameter files in the parlist
+    set parZeroFile [open parZeroFile.par w]
+    puts $parZeroFile "BONDS\nANGLES\nDIHEDRALS\nIMPROPERS"
+    foreach ele $parDataInput {
+        puts $parZeroFile "[lindex $ele 0]    0.0   0   0.0"
+    }
+    puts $parZeroFile "\nEND"
+    close $parZeroFile
+    lappend parlist "parZeroFile.par"
+
+    # build the namdEnergy cmd
+    set namdEn "namdenergy -silent -psf [list $psf] -exe $::ForceFieldToolKit::Configuration::namdBin -all -sel \$sel -cutoff 1000"
+    foreach par $parlist {
+        set namdEn [concat $namdEn "-par [list $par]"]
+    }
+
+    # make a selection for the QMdata conformations
+    set all [atomselect top all]
+
+    # calculate the MM energy using namdenergy
+    set sel [atomselect top all]
+    set energyout [eval $namdEn]
+
+    set EnMM {}
+    foreach en $energyout {
+      lappend EnMM [lindex $en end]
+    }
+
+    # some setup
+    # parse out QM energy (EnQM)
+    set EnQM {}
+    set imprList {}
+    for {set i 0} {$i < [llength $QMdata]} {incr i} {
+        lappend imprList [lindex $QMdata $i 0]
+        lappend EnQM [lindex $QMdata $i 2]
+    }
+
+    # need a unique list of impropers to be optimized
+    # note that these are just indices and may duplicate 
+    # actual improper parameters!
+    set imprList [lsort -unique $imprList]
+
+    # scanned and fitted impropers should match 1:1
+    # need their types to know which k to use
+    set kListIndex {}
+    foreach ele $imprList {
+      set types {}
+      foreach ind $ele {
+        set temp [atomselect top "index $ind"]
+        lappend types [$temp get type]
+        $temp delete
+      }
+      if { [lsearch -exact $masterTypeList $types] != -1 } {
+        lappend kListIndex [lsearch -exact $masterTypeList $types]
+      } elseif { [lsearch -exact $masterTypeList [lreverse $types]] != -1 } {
+        lappend kListIndex [lsearch -exact $masterTypeList [lreverse $types]]
+      } else {
+        tk_messageBox \
+            -type ok \
+            -icon warning \
+            -message "Application halting due to the following errors:" \
+            -detail "The improper $ele was scanned but is not being fit."
+        # there are errors, return the error response
+        return -1
+      }
+    }
+
+    # slow way to search but there will be very few of these anyway
+    # takes each fitted improper and compares against all scanned impropers
+    foreach tofit $masterTypeList {
+      set match 0
+      foreach ele $imprList {
+        set types {}
+        foreach ind $ele {
+          set temp [atomselect top "index $ind"]
+          lappend types [$temp get type]
+          $temp delete
+        }
+        if { [lsearch -exact [list $tofit] $types] != -1 || [lsearch -exact [list $tofit] [lreverse $types]] != -1 } {
+          set match 1
+        }
+      } 
+      if { $match == 0 } { 
+         tk_messageBox \
+           -type ok \
+           -icon warning \
+           -message "Application halting due to the following errors:" \
+           -detail "The improper $tofit is being fit but was not scanned."
+         # there are errors, return the error response
+           return -1
+      }
+    }
+
+    # create a list for every frame that are the relevant 
+    # psi values and which k they should use (based on types)
+    # { {{psi0,0 kIndex} {psi1,0 kIndex} ...} {{psi0,1 kIndex} {psi1,1 kIndex} ...} }
+    set psiList {}
+    for {set i 0} {$i < [llength $EnQM]} {incr i} {
+      animate goto $i
+      set fr {}
+      for {set j 0} {$j < [llength $imprList]} {incr j} {
+        lappend fr [list [measure imprp [lindex $imprList $j]] [lindex $kListIndex $j]]
+      }
+      lappend psiList $fr
+    }
+
+    if { $debug } { puts $debugLog "psiList\t$psiList"; flush $debugLog }
+    if { $debug } { puts $debugLog "imprList\t$imprList"; flush $debugLog }
+    if { $debug } { puts $debugLog "kListIndex\t$kListIndex"; flush $debugLog }
+    if { $debug } { puts $debugLog "masterTypeList\t$masterTypeList"; flush $debugLog }
+
+    # normalize the energies to the global minimum in each set
+    set EnQM [::ForceFieldToolKit::DihOpt::renorm $EnQM]
+    set EnMM [::ForceFieldToolKit::DihOpt::renorm $EnMM]
+
+    # set the weighting factors to ignore high energy (QME) conformations
+    set weights {}
+    for {set i 0} {$i < [llength $EnQM]} {incr i} {
+        if {[lindex $EnQM $i] < $cutoff} {
+            lappend weights 1
+        } else {
+            lappend weights 0
+        }
+    }
+
+
+
+    if { $debug } {
+        puts $debugLog "\n==========================================="
+        puts $debugLog " Improper Optimization Setup"
+        puts $debugLog "==========================================="
+        puts $debugLog "Setup Weights:"
+        puts $debugLog "nQME\tnMME\tweight"
+        for {set i 0} {$i < [llength $EnQM]} {incr i} {
+            puts $debugLog "[lindex $EnQM $i]\t[lindex $EnMM $i]\t[lindex $weights $i]"
+        }
+        flush $debugLog
+    }
+
+    # delete the loaded QM molecule set to reclaim memory
+    # ...or not
+    ##mol delete top
+
+    # ------------
+    # OPTIMIZATION
+    # ------------
+
+    # setup initial, bounds
+    set bounds {}
+    set init {}
+    for {set i 0} {$i < [llength $klist]} {incr i} {
+      lappend bounds [list 0 $kmaxImpr]
+      if { [lindex $klist $i] <= 0 || [lindex $klist $i] >= $kmaxImpr } {
+        lappend init [expr $kmaxImpr/3.0]
+      } else { 
+        lappend init [lindex $klist $i]
+      }     
+    }
+
+    if { $debug } {
+        puts $debugLog "Initial State and Bounds:"
+        puts $debugLog "\nInit\tLBound\tUBound:"
+        for {set i 0} {$i < [llength $init]} {incr i} {
+            puts $debugLog "[lindex $init $i]\t[lindex $bounds $i 0]\t[lindex $bounds $i 1]"
+        }
+        flush $debugLog
+    }
+
+
+    # opt setup
+    # reset the optimization step counter
+    set globalCount 0
+    if { $modeImpr eq "downhill" } {
+        set opt [optimization -downhill -tol $tol -function ::ForceFieldToolKit::DihOpt::optImpr]
+    } elseif { $modeImpr eq "simulated annealing" } {
+        set opt [optimization -annealing -tol $tol -T $saT -iter $saIter -Tsteps $saTSteps -Texp $saTExp -function ::ForceFieldToolKit::DihOpt::optImpr]
+    } else {
+        if { $debug } {puts $debugLog "ERROR: Unsupported optimization mode.  Currently \"downhill\" and \"simulated annealing\" are supported"; flush $debugLog }
+        error "ERROR: Unsupported optimization mode.  Currently \"downhill\" and \"simulated annealing\" are supported"
+    }
+
+    puts "bounds: $bounds"
+    puts "init: $init"
+
+    $opt configure -bounds $bounds
+    $opt initsimplex $init 1.0
+
+    # Run the optimization
+    set result [$opt start]
+
+    if { $debug } {
+        puts $debugLog "\n==========================="
+        puts $debugLog " Optimization Results"
+        puts $debugLog " Final Klist: [lindex $result 0]"
+        puts $debugLog " Final Objective Value: [lindex $result 1]"
+        puts $debugLog " Optimizer Iterations: $globalCount"
+        puts $debugLog "==========================="
+        flush $debugLog
+    }
+
+    # ---------
+    # FINISH UP
+    # ---------
+
+    # Since not every optimization iteration is written to the log file
+    # we need to recalc the energy from the final (optimized) klist
+
+    # update the gui status
+    if { $guiMode } {
+        set ::ForceFieldToolKit::gui::imoptStatus "Writing Final Energies"; update idletasks
+    }
+
+    puts $outFile "\n================================================="
+    puts $outFile "FINAL RMSE"
+    puts $outFile "[lindex $result 1]"
+    puts $outFile "END"
+    flush $outFile
+
+    # write a header to the log file denoting that we're revisiting the optimized klist
+    puts $outFile "\n================================================="
+    puts $outFile "FINAL STEP ENERGIES"
+    puts $outFile "QME   MME(i)   MME(f)   QME-MME(f)"; flush $outFile
+    flush $outFile
+
+    # parse out the final klist
+    set finalKlist [lindex $result 0]
+
+    # calculate the isolated improper energies
+    set imEnList {}
+    for {set i 0} {$i < [llength $psiList]} {incr i} {
+      set sum 0
+      foreach psi [lindex $psiList $i] {
+        set sum [expr $sum + pow([lindex $psi 0]*${PI}/180.0,2)*[lindex $finalKlist [lindex $psi 1]]]
+      }
+      lappend imEnList $sum
+    }
+
+    set EnMMf {}
+    # add to the relaxed total MM energy
+    for {set i 0} {$i < [llength $imEnList]} {incr i} {
+        lappend EnMMf [expr [lindex $imEnList $i] + [lindex $EnMM $i]]
+    }
+
+    set EnMMf [::ForceFieldToolKit::DihOpt::renorm $EnMMf]
+
+    for {set i 0} {$i < [llength $EnQM]} {incr i} {
+        set QMt [lindex $EnQM $i]
+        set MMt [lindex $EnMM $i]
+        set MMft [lindex $EnMMf $i]
+        puts $outFile [format "%2.3f\t%2.3f\t%2.3f\t%2.3f" $QMt $MMt $MMft [expr $QMt - $MMft] ]; flush $outFile
+    }
+
+    puts $outFile "END"; flush $outFile
+
+    if { $debug } { puts $debugLog "\nQME, MMEi, MMEf written to log file"; flush $debugLog }
+
+    # write out final parameters in clearly formatted output to the log file
+    # important for import into BuildPar
+
+    # update the gui status
+    if { $guiMode } {
+        set ::ForceFieldToolKit::gui::imoptStatus "Writing Final Parameters"; update idletasks
+    }
+
+    puts $outFile "\n\n================================================="
+    puts $outFile "FINAL PARAMETERS"
+    # prepare a formatted list of parameters
+
+    foreach type $masterTypeList k $finalKlist {
+        puts $outFile "[list improper [lrange $type 0 3] $k  0  0.00]"
+    }
+    puts $outFile "END\n"
+    flush $outFile
+
+    # clean up
+    close $outFile
+    file delete parZeroFile.par
+
+    if { $debug } {
+        puts $debugLog "\n\nDONE"
+        close $debugLog
+    }
+
+    if { $guiMode } {
+        return [list [lindex $result 1] $EnMMf $finalKlist]
+    }
 
 }
 #======================================================
@@ -1048,8 +1481,8 @@ proc ::ForceFieldToolKit::DihOpt::refine {} {
     } elseif { $refineMode eq "simulated annealing" } {
         set opt [optimization -annealing -tol $refineTol -T $refinesaT -iter $refinesaIter -Tsteps $refinesaTSteps -Texp $refinesaTExp -function ::ForceFieldToolKit::DihOpt::optDih]
     } else {
-        if { $debug } {puts $debugLog "ERROR: Unsupported optimziation mode.  Currently \"downhill\" and \"simulated annealing\" are supported"; flush $debugLog }
-        error "ERROR: Unsupported optimziation mode.  Currently \"downhill\" and \"simulated annealing\" are supported"
+        if { $debug } {puts $debugLog "ERROR: Unsupported optimization mode.  Currently \"downhill\" and \"simulated annealing\" are supported"; flush $debugLog }
+        error "ERROR: Unsupported optimization mode.  Currently \"downhill\" and \"simulated annealing\" are supported"
     }
 
     $opt configure -bounds $bounds
@@ -1201,6 +1634,119 @@ proc ::ForceFieldToolKit::DihOpt::optDih { kDihs } {
 
     if { $debug && $globalCount % $outFreq == 0 } {
         puts $debugLog "Current Value for RMSE/Obj: $Obj"
+        flush $debugLog
+    }
+
+    # advance the optimizer count
+    incr globalCount
+
+    # return the objective
+    return $Obj
+}
+#======================================================
+proc ::ForceFieldToolKit::DihOpt::optImpr { imInput } {
+    # the target function of the optimization routine
+    # pass in a list { k1 k2 ... }
+    # returns an objective value
+
+    # localize required variables
+    variable EnQM; # normalized QM energies
+    variable EnMM; # normalized relaxed MM energies
+
+    variable psiList
+    variable masterTypeList
+
+    variable weights; # 1 for conformations with EnQM < 10 kcal/mol
+
+    variable outFile; # log file
+    variable debug; # switch for debug logging
+    variable debugLog; # file handle for debug log
+    variable guiMode; # determines if running from gui
+
+    variable globalCount; # counts optimizer steps
+    variable outFreq; # determines how often data is written to the log file
+
+    set PI 3.14159265359
+
+    if { $globalCount % $outFreq == 0 && $guiMode } {
+         set ::ForceFieldToolKit::gui::imoptStatus "Running Optimization (iter: $globalCount)"
+         update idletasks
+    }
+
+    if { $debug && $globalCount % $outFreq == 0 } {
+        puts $debugLog "\nCurrent Optimizer Iteration: $globalCount"
+        puts $debugLog "Current k list: $imInput"
+        flush $debugLog
+    }
+
+    # write the current parameters to the logfile
+    if { $globalCount % $outFreq == 0} {
+        puts $outFile "step $globalCount  Current params (type kimpr): "; flush $outFile
+        foreach type $masterTypeList k $imInput {
+          puts $outFile "[list improper [lrange $type 0 3] $k]"
+        }
+    }
+
+
+    # !V(improper) = Kpsi(psi - psi0)**2 
+    # !
+    # !Kpsi: kcal/mole/rad**2
+    # !psi0: degrees
+    #  psi0 is always zero!
+
+    # psiList: { {{psi0,0 kIndex} {psi1,0 kIndex} ...} {{psi0,1 kIndex} {psi1,1 kIndex} ...} }
+
+    # calculate the isolated improper energies
+    set imEnList {}
+    for {set i 0} {$i < [llength $psiList]} {incr i} {
+      set sum 0
+      foreach psi [lindex $psiList $i] {
+        set sum [expr $sum + pow([lindex $psi 0]*${PI}/180.0,2)*[lindex $imInput [lindex $psi 1]]]
+      }
+      lappend imEnList $sum
+    }
+
+    set EnMMf {}
+    # add to the relaxed total MM energy
+    for {set i 0} {$i < [llength $imEnList]} {incr i} {
+        lappend EnMMf [expr [lindex $imEnList $i] + [lindex $EnMM $i]]
+    }
+
+    # normalize
+    set EnMMf [::ForceFieldToolKit::DihOpt::renorm $EnMMf]
+
+    set sumWeights 0
+    for {set i 0} {$i < [llength $weights]} {incr i} {
+        set sumWeights [expr $sumWeights + [lindex $weights $i]]
+    }
+
+    if { $globalCount % $outFreq == 0} {
+        puts $outFile "QME   MME(i)   MME(f)   QME-MME(f)"; flush $outFile
+    }
+
+    # calculate RMSE
+    set Obj 0
+    for {set i 0} {$i < [llength $weights]} {incr i} {
+        set QMt [lindex $EnQM $i]
+        set MMt [lindex $EnMM $i]
+        set MMft [lindex $EnMMf $i]
+        set Obj [expr $Obj + [lindex $weights $i]*pow($QMt - $MMft,2)]
+
+        # write individual contributions to log file
+        if { $globalCount % $outFreq == 0} {
+            puts $outFile [format "%2.3f\t%2.3f\t%2.3f\t%2.3f" $QMt $MMt $MMft [expr $QMt - $MMft] ]; flush $outFile
+        }
+    }
+
+    set Obj [expr sqrt($Obj/$sumWeights)]
+
+    # write obj to log file
+    if { $globalCount % $outFreq == 0} {
+        puts $outFile "Current RMSE: $Obj\n\n"; flush $outFile
+    }
+
+    if { $debug && $globalCount % $outFreq == 0 } {
+        puts $debugLog "Current Value for Obj: $Obj"
         flush $debugLog
     }
 
@@ -1873,6 +2419,73 @@ proc ::ForceFieldToolKit::DihOpt::buildScript { scriptFileName } {
     # launch the optimization
     puts $scriptFile "\n\# Run the optimization"
     puts $scriptFile "::ForceFieldToolKit::DihOpt::optimize"
+    puts $scriptFile "\n\# Return gracefully"
+    puts $scriptFile "return 1"
+
+    # wrap up
+    close $scriptFile
+    return
+}
+#======================================================
+proc ::ForceFieldToolKit::DihOpt::buildScriptImpr { scriptFileName } {
+    # builds a script that can be run from text mode
+
+    # need to localize variables
+    # input
+    #variable psf
+    #variable pdb
+    variable parlist
+    variable outFileNameImpr
+
+    # qm target data
+    variable GlogFiles
+
+    # dihedral parameter settings
+    variable parDataInput
+
+    # advanced settings
+    variable kmaxImpr
+    variable cutoff
+    variable modeImpr
+    variable tol
+    variable saT
+    variable saIter
+    variable saTSteps
+    variable saTExp
+    variable debug
+    variable outFreq
+
+    # build the script
+    set scriptFile [open $scriptFileName w]
+
+    # load required packages
+    puts $scriptFile "\# Load the ffTK package"
+    puts $scriptFile "package require forcefieldtoolkit"
+    #puts $scriptFile "::ForcefieldToolKit::Configuration::init"
+    puts $scriptFile "\n\# Set DihOpt Variables"
+    puts $scriptFile "set ::ForceFieldToolKit::Configuration::chargeOptPSF $::ForceFieldToolKit::Configuration::chargeOptPSF"
+    puts $scriptFile "set ::ForceFieldToolKit::Configuration::geomOptPDB   $::ForceFieldToolKit::Configuration::geomOptPDB"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::parlist [list $parlist]"
+    puts $scriptFile "set ::ForceFieldToolKit::Configuration::namdBin $::ForceFieldToolKit::Configuration::namdBin"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::outFileNameImpr $outFileNameImpr"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::GlogFiles [list $GlogFiles]"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::parDataInput [list $parDataInput]"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::kmaxImpr $kmaxImpr"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::cutoff $cutoff"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::modeImpr [list $modeImpr]"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::tol $tol"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::saT $saT"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::saIter $saIter"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::saTSteps $saTSteps"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::saTExp $saTExp"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::debug $debug"
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::outFreq $outFreq"
+
+    puts $scriptFile "set ::ForceFieldToolKit::DihOpt::guiMode 0"
+
+    # launch the optimization
+    puts $scriptFile "\n\# Run the optimization"
+    puts $scriptFile "::ForceFieldToolKit::DihOpt::optimizeImpr"
     puts $scriptFile "\n\# Return gracefully"
     puts $scriptFile "return 1"
 

@@ -832,7 +832,6 @@ proc ::ForceFieldToolKit::Gaussian::getDipoleData_ChargeOpt { filename } {
 
     # parse the output file
     # burn lines until we find the std orientation
-    # TODO: kills program when EOF
     while { [set inLine [string trim [gets $inFile]]] ne "Standard orientation:" } { continue }
 
     # once std orientation is found, burn header (4 lines)
@@ -844,7 +843,6 @@ proc ::ForceFieldToolKit::Gaussian::getDipoleData_ChargeOpt { filename } {
     }
 
     # burn until find the dipole moment
-    # TODO: kills program when EOF
     while { [set inLine [string trim [gets $inFile]]] ne "Dipole moment (field-independent basis, Debye):"} { continue }
 
     # parse the dipole moment
@@ -1219,7 +1217,7 @@ proc ::ForceFieldToolKit::Gaussian::buildFiles_GenDihScan { dihData outPath base
         puts $outfile "%mem=${qmMem}GB"
         puts $outfile "$qmRoute"
         puts $outfile ""
-        puts $outfile "$basename Dihedral Scan"
+        puts $outfile "$basename Dihedral/Improper Scan"
         puts $outfile ""
         puts $outfile "$qmCharge $qmMult"
         # write coords
@@ -1242,7 +1240,7 @@ proc ::ForceFieldToolKit::Gaussian::buildFiles_GenDihScan { dihData outPath base
        puts $outfile "%mem=${qmMem}GB"
        puts $outfile "$qmRoute"
        puts $outfile ""
-       puts $outfile "$basename Dihedral Scan at MP2/6-31G*"
+       puts $outfile "$basename Dihedral/Improper Scan"
        puts $outfile ""
        puts $outfile "$qmCharge $qmMult"
        # write coords

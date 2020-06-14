@@ -1216,7 +1216,7 @@ proc ::ForceFieldToolKit::SharedFcns::checkWhichQM { outFile } {
     while { ![eof $inFile] } { 
 	set line [string trim [string map { \" {} } [gets $inFile]]]
 	# Check if Gaussian
-	if { [string match -nocase "*Gaussian, Inc.  All Rights Reserved*" $line] } {
+	if { [string match -nocase "*Gaussian, Inc.*" $line] } {
 	       set NameQM "Gaussian"
                break 
 	# Check if ORCA
