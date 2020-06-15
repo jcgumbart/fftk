@@ -720,6 +720,10 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromDict { molID LPDict } {
     set LPinfo {}
     set toBuildLP {}
 
+    if {[dict size $LPDict] <= 0} {
+        return $molID
+    }
+
     # build dict with index as key if defined
     dict for {name value} $LPDict {
         dict with value {
@@ -1074,6 +1078,7 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::writePSF { molID fname } {
   # 19        22        23
 
     if { [info exist LPinfo] && [dict size $LPinfo] > 0 } {
+        puts "LPinfo exist! [dict size $LPinfo]"
         set fp_in [open $fname r]
         set lines [split [read -nonewline $fp_in] "\n"]
         close $fp_in

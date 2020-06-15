@@ -313,6 +313,47 @@ proc ::ForceFieldToolKit::ORCA::write120filesWI { outFolderPath basename aName a
     }
 }
 #===========================================================================================================
+proc ::ForceFieldToolKit::ORCA::write90filesWI { outFolderPath basename aName aInd atom_info aGname bGname cGname qmProc qmMem qmRoute qmCharge qmMult } {
+    # writes single point energy files required for charge optimization
+    # first step is to call the Gaussian counterpart with ORCAFLAG true
+    set ORCAFLAG "true"
+    set gauRoute "# HF/6-31G"
+    set gauName "$basename-aux"
+    ::ForceFieldToolKit::Gaussian::write90filesWI $outFolderPath $gauName $aName $aInd $atom_info $aGname $bGname $cGname $qmProc $qmMem $gauRoute $qmCharge $qmMult
+
+    set numAtoms [molinfo top get numatoms]
+
+    set outname [file join $outFolderPath ${basename}-ACC-${aName}-ppn.inp]
+    set outfile [open $outname w]
+
+    puts $outfile "$qmRoute"
+    ::ForceFieldToolKit::ORCA::setMemProc $outfile $qmProc $qmMem
+    puts $outfile ""
+    puts $outfile "\%geom"
+    puts $outfile " ConnectFragments" ;# testing new contrains
+    puts $outfile "   \{ 1 2 O $aInd $numAtoms \}"  ;# index of Hw is equal to numatoms
+    puts $outfile " end"
+    puts $outfile " Constraints"
+    puts $outfile "   \{ B $aInd $numAtoms C \}"  ;# index of Hw is equal to numatoms
+    puts $outfile "   \{ D * [expr {$numAtoms + 1}] $aInd * C \}"       ;# all the dihedrals *-Ow-AccAtom-*
+    puts $outfile " end"
+    puts $outfile " invertConstraints true"
+    puts $outfile "end"
+    puts $outfile ""
+    puts $outfile "\%coords"
+    puts $outfile "  CTyp xyz"
+    puts $outfile "  Charge $qmCharge"
+    puts $outfile "  Mult $qmMult"
+    puts $outfile "  Units Angs"
+    puts $outfile "  coords"
+    puts $outfile ""
+    close $outfile
+
+    ::ForceFieldToolKit::ORCA::auxXYZwriter [file join $outFolderPath ${gauName}-ACC-${aName}-ppn.gau] $outname    
+
+    file delete [file join $outFolderPath ${gauName}-ACC-${aName}-ppn.gau] ;# Delete the Gaussian files created
+}
+#===========================================================================================================
 proc ::ForceFieldToolKit::ORCA::writeSPfilesWI { outFolderPath basename qmProc qmMem qmCharge qmMult } {
     # writes single point energy files required for charge optimization
     # hard coded for HF/6-31G* and MP2/6-31G*

@@ -2182,7 +2182,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
                     # and add to the treeview box
                     if {[regexp {.*-(?:ACC|DON)-(.*)} [file rootname [file tail $logFile]] tmpvar currAtomName]} {
                     	# check for exception (e.g., carbonyl), refine currAtomName on match
-                    	regexp {(.*)-120[ab]} $currAtomName tmpvar currAtomName
+                    	regexp {(.*)-(120[ab]|ppn)} $currAtomName tmpvar currAtomName
                         .fftk_gui.hlf.nb.chargeopt.qmt.wie.logData insert {} end -values [list $logFile $currAtomName 1.0]
                         unset currAtomName; unset tmpvar
                     } else {

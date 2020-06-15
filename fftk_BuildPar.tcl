@@ -554,6 +554,7 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
     # only supports ATOM, BOND, IMPR sections
     # note: charge penalty is stored in beta
     set atomIndex_read 0 ; # key to map the entry to the loaded mol2 structure
+    set LPDict {}
     while { ![eof $infile] } {
         set inline [string trim [gets $infile]]
 
@@ -663,9 +664,7 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
     topo guessatom element mass
     mol reanalyze $molid
 
-    if {[info exists LPDict]} {
-        set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromDict $molid $LPDict]
-    }
+    set molid [::ForceFieldToolKit::SharedFcns::LonePair::initFromDict $molid $LPDict]
 
 
     # Handle the parameter section of the stream file

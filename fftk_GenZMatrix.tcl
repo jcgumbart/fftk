@@ -165,7 +165,6 @@ proc ::ForceFieldToolKit::GenZMatrix::genZmatrix {} {
     # run sanity check
     if { ![::ForceFieldToolKit::GenZMatrix::sanityCheck] } { return }
 
-    # TODO: write perpendicular QM scan file for halogen
     ::ForceFieldToolKit::${qmSoft}::genZmatrix $outFolderPath $basename $donList $accList $qmProc $qmMem $qmRoute $qmCharge $qmMult 
     
 }
@@ -177,6 +176,8 @@ proc ::ForceFieldToolKit::GenZMatrix::genZmatrix {} {
 proc ::ForceFieldToolKit::GenZMatrix::writeExceptionZMats { aName aInd gnames atom_info } {
 	# checks if C=O, P=O, or S=O which require two additional interaction
 	# files at alternate water positions (120 degrees off axis)
+	# checks if halogens which require two additional interaction
+	# files at alternate water position  (90 degrees off axis)
 
 	# localize some required variables
 	variable outFolderPath
@@ -213,7 +214,6 @@ proc ::ForceFieldToolKit::GenZMatrix::writeExceptionZMats { aName aInd gnames at
 		}
 	}
 	if { ![llength $cInd] } { return }
-	set cSel [atomselect top "index $cInd"]
 	set cGname [lindex $gnames $cInd]
 
 	# check if exception case of X=O
@@ -222,8 +222,11 @@ proc ::ForceFieldToolKit::GenZMatrix::writeExceptionZMats { aName aInd gnames at
                 # call procedure to write single point input files for water interaction
                 ::ForceFieldToolKit::${qmSoft}::write120filesWI $outFolderPath $basename $aName $aInd $atom_info $aGname $bGname $cGname $qmProc $qmMem $qmRoute $qmCharge $qmMult 
 
-		# clean up
-		$cSel delete
+	} elseif { [lsearch -exact {Cl Br I} $aElem ] && [llength $bondlistA] == 1 } {
+
+                # call procedure to write single point input files for water interaction
+                ::ForceFieldToolKit::${qmSoft}::write90filesWI $outFolderPath $basename $aName $aInd $atom_info $aGname $bGname $cGname $qmProc $qmMem $qmRoute $qmCharge $qmMult 
+
 	}
 
 	# clean up and return

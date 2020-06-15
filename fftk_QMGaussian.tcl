@@ -224,9 +224,10 @@ proc ::ForceFieldToolKit::Gaussian::genZmatrix {outFolderPath basename donList a
 		::ForceFieldToolKit::Gaussian::writeZmat $acceptorAtom acceptor $Gnames $outfile
 		close $outfile
 
-		# CARBONYL EXCEPTIONS
+		# CARBONYL AND HALOGEN EXCEPTIONS
 		# there is a special exception for X=O cases (e.g. C=O, P=O, S=O)
 		# where we need to write two additional files
+        # another speical exception for halogens, writing one additional file
 		::ForceFieldToolKit::GenZMatrix::writeExceptionZMats $acceptorName $acceptorAtom $Gnames $atom_info
 
     }
@@ -615,6 +616,42 @@ proc ::ForceFieldToolKit::Gaussian::write120filesWI { outFolderPath basename aNa
     	# close up
     	close $outfile
     }
+}
+#===========================================================================================================
+proc ::ForceFieldToolKit::Gaussian::write90filesWI { outFolderPath basename aName aInd atom_info aGname bGname cGname qmProc qmMem qmRoute qmCharge qmMult } {
+    # writes single point energy files required for charge optimization
+    # hard coded for HF/6-31G* and MP2/6-31G*
+
+    # open output file
+    set outname [file join $outFolderPath ${basename}-ACC-${aName}-ppn.gau]
+    set outfile [open $outname w]
+
+    # write the header
+    puts $outfile "%chk=${basename}-ACC-${aName}-ppn.chk"
+    puts $outfile "%nproc=$qmProc"
+    puts $outfile "%mem=${qmMem}GB"
+  puts $outfile "$qmRoute"
+    puts $outfile ""
+    puts $outfile "<qmtool> simtype=\"Geometry optimization\" </qmtool>"
+    puts $outfile "${basename}-ACC-${aName}-ppn"
+    puts $outfile ""
+    puts $outfile "$qmCharge $qmMult"
+
+    # write the cartesian coords for the molecule
+    foreach atom_entry $atom_info {
+        puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+    }
+
+    # write custom zmatrix
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $bGname 90.0 $cGname 90.0]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x H1w 1.0 $aGname 90.00 $bGname 0.00]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow H1w 0.9527 x 90.00 $aGname 180.00]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9527 H1w 104.52 x dih]
+    puts $outfile "rAH  2.0"
+    puts $outfile "dih  0.0"
+
+    # close up
+    close $outfile
 }
 #===========================================================================================================
 
