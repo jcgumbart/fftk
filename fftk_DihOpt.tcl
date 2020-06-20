@@ -507,20 +507,6 @@ proc ::ForceFieldToolKit::DihOpt::optimize {} {
     puts $outFile "END\n"
     flush $outFile
 
-    # patch lone pair
-    set molID [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
-    mol addfile $pdb
-    set lp_num [::ForceFieldToolKit::SharedFcns::LonePair::numLP]
-    if {$lp_num > 0} {
-        for {set i 0} { $i < [llength $QMdata] } { incr i } {
-            set QMcoords [lindex $QMdata $i 3]
-            lset QMdata $i 3 [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $QMcoords]
-
-            # TODO: modify $QMdata $i 0 to make sure the atom index matches after adding lp
-        }
-    }
-    mol delete $molID
-
     # load QM conformations into VMD
     ::ForceFieldToolKit::DihOpt::vmdLoadQMData $psf $pdb $QMdata
 
@@ -922,20 +908,6 @@ proc ::ForceFieldToolKit::DihOpt::optimizeImpr {} {
     }
     puts $outFile "END\n"
     flush $outFile
-
-    # patch lone pair
-    set molID [::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF $psf]
-    mol addfile $pdb
-    set lp_num [::ForceFieldToolKit::SharedFcns::LonePair::numLP]
-    if {$lp_num > 0} {
-        for {set i 0} { $i < [llength $QMdata] } { incr i } {
-            set QMcoords [lindex $QMdata $i 3]
-            lset QMdata $i 3 [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $QMcoords]
-
-            # TODO: modify $QMdata $i 0 to make sure the atom index matches after adding lp
-        }
-    }
-    mol delete $molID
 
     # load QM conformations into VMD
     ::ForceFieldToolKit::DihOpt::vmdLoadQMData $psf $pdb $QMdata
