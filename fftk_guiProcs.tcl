@@ -1243,7 +1243,7 @@ proc ::ForceFieldToolKit::gui::gzmToggleLabels {} {
         set selAll [atomselect top all]
         foreach ind [$selAll get index] {
             set sel [atomselect top "index $ind"]
-            lappend gzmAtomLabels [draw text [join [$sel get {x y z}]] $ind size 3]
+            lappend gzmAtomLabels [draw text [join [$sel get {x y z}]] $ind size 2]
             $sel delete
         }
         $selAll delete
@@ -1367,10 +1367,10 @@ proc ::ForceFieldToolKit::gui::coptShowAtomLabels {} {
     foreach atomInd [[atomselect top all] get index] {
         set sel [atomselect top "index $atomInd"]
         switch -exact $coptAtomLabel {
-            "Index"  { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[$sel get index]" size 3]  }
-            "Name"   { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[$sel get name]" size 3]   }
-            "Type"   { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[$sel get type]" size 3]   }
-            "Charge" { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[format "%0.3f" [$sel get charge]]" size 3] }
+            "Index"  { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[$sel get index]" size 2]  }
+            "Name"   { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[$sel get name]" size 2]   }
+            "Type"   { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[$sel get type]" size 2]   }
+            "Charge" { lappend coptAtomLabelInd [draw text [join [$sel get {x y z}]] "[format "%0.3f" [$sel get charge]]" size 2] }
             default  {}
         }
         $sel delete
@@ -2303,7 +2303,7 @@ proc ::ForceFieldToolKit::gui::gdsToggleLabels {} {
         draw color lime
         foreach ind [[atomselect top all] get index] {
             set sel [atomselect top "index $ind"]
-            lappend gdsAtomLabels [draw text [join [$sel get {x y z}]] $ind size 3]
+            lappend gdsAtomLabels [draw text [join [$sel get {x y z}]] $ind size 2]
             $sel delete
         }
     }
@@ -2324,7 +2324,7 @@ proc ::ForceFieldToolKit::gui::imsToggleLabels {} {
         draw color lime
         foreach ind [[atomselect top all] get index] {
             set sel [atomselect top "index $ind"]
-            lappend imsAtomLabels [draw text [join [$sel get {x y z}]] $ind size 3]
+            lappend imsAtomLabels [draw text [join [$sel get {x y z}]] $ind size 2]
             $sel delete
         }
     }

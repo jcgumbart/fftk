@@ -116,6 +116,8 @@ proc ::ForceFieldToolKit::ORCA::writePDBGeomOpt { psf pdb logFile optPdb } {
             while { ![string match "" [set inLine [string trim [gets $inFile]]]] } {
                 lappend coords [lrange $inLine 1 3]
             }
+            set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $coords]
+
             # add a new frame, set the coords 
             mol addfile $pdb
             for {set i 0} {$i < [llength $coords]} {incr i} {

@@ -222,7 +222,7 @@ proc ::ForceFieldToolKit::GenZMatrix::writeExceptionZMats { aName aInd gnames at
                 # call procedure to write single point input files for water interaction
                 ::ForceFieldToolKit::${qmSoft}::write120filesWI $outFolderPath $basename $aName $aInd $atom_info $aGname $bGname $cGname $qmProc $qmMem $qmRoute $qmCharge $qmMult 
 
-	} elseif { [lsearch -exact {Cl Br I} $aElem ] && [llength $bondlistA] == 1 } {
+	} elseif { [lsearch -exact {Cl Br I} $aElem ] >= 0 && [llength $bondlistA] == 1 } {
 
                 # call procedure to write single point input files for water interaction
                 ::ForceFieldToolKit::${qmSoft}::write90filesWI $outFolderPath $basename $aName $aInd $atom_info $aGname $bGname $cGname $qmProc $qmMem $qmRoute $qmCharge $qmMult 
