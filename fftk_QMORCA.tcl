@@ -1257,7 +1257,7 @@ proc ::ForceFieldToolKit::ORCA::zmatqm_BondAngleOpt { debug debugLog hessLogID h
             while { [regexp {[0-9]} [set inLine [string trim [gets $inFile]]]] } {
                  set slist [concat {*}[split $inLine " ,()"]]
                  set typePar [lindex $slist 1]
-                 lappend $typeList $typePar
+                 lappend typeList $typePar
                  switch $typePar {
                    B { set typePar bond; incr nbonds }
                    A { set typePar angle; incr nangles }
@@ -1314,7 +1314,7 @@ proc ::ForceFieldToolKit::ORCA::get_inthessian_kcal_BondAngleOpt { hessLogID hes
         # jump to $hessian line
         if {[string first "\$hessian" $line]>=0} {
             set dimHess [lindex [set line [gets $fid]] 0]
-            for { set j 0 } { $j <= [expr { $dimHess / 5 }] } { incr j } {
+            for { set j 0 } { $j < [expr { $dimHess / 5.0 }] } { incr j } {
                 gets $fid ;# skip first line of each matrix block
                 for { set i 0 } { $i < $dimHess } { incr i } {
                     set line [gets $fid]
