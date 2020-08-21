@@ -2165,8 +2165,10 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
     set hessLogID [mol new $psf] ; mol addfile $pdb
     # reTypeFromPSF/reChargeFromPSF has been depreciated
     # ::ForceFieldToolKit::SharedFcns::reTypeFromPSF $psf $hessLogID
-    ::QMtool::use_vmd_molecule $hessLogID
-    ::QMtool::load_gaussian_log $hessLog $hessLogID
+    if {$::ForceFieldToolKit::qmSoft eq "Gaussian"} {
+        ::QMtool::use_vmd_molecule $hessLogID
+        ::QMtool::load_gaussian_log $hessLog $hessLogID
+    }
 
     # not sure if this step is necessary
     # get the internal coordinates

@@ -193,13 +193,13 @@ proc ::ForceFieldToolKit::GenZMatrix::writeExceptionZMats { aName aInd gnames at
 	set aSel [atomselect top "index $aInd"]
 	set bondlistA [lindex [$aSel getbonds] 0]
 	set aGname [lindex $gnames $aInd]
-	set aElem [string index $aGname 0]
+	set aElem [$aSel get element]
 
 	set bInd [lindex $bondlistA 0]
 	set bSel [atomselect top "index $bInd"]
 	set bondlistB [lindex [$bSel getbonds] 0]
 	set bGname [lindex $gnames $bInd]
-	set bElem [string index $bGname 0]
+	set bElem [$bSel get element]
 
 	# find a valid C atom (and associated information)
 	set cInd {}

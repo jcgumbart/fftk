@@ -248,6 +248,8 @@ proc ::ForceFieldToolKit::ORCA::genZmatrix {outFolderPath basename donList accLi
 #===========================================================================================================
 proc ::ForceFieldToolKit::ORCA::auxXYZwriter { gauFile outname } {
         
+    set origmolid [molinfo top]
+
     set outfile [open $outname a]  
     # Read gaussian file with QMTools
     ::QMtool::load_file $gauFile com
@@ -257,7 +259,7 @@ proc ::ForceFieldToolKit::ORCA::auxXYZwriter { gauFile outname } {
     set xyzList [[atomselect top "not atomicnumber 0"] get index]
     set xyzSize [llength $xyzList] 
     foreach ind [lrange $xyzList 0 [expr {$xyzSize - 4} ]] { ;# Loop only the molecule index. Fragment (1).
-        set auxAtom [atomselect top "index $ind"]
+        set auxAtom [atomselect $origmolid "index $ind"]
         puts $outfile "[$auxAtom get element](1) [format "%7s  %7s  %7s" [$auxAtom get x] [$auxAtom get y] [$auxAtom get z]]"
     }
     foreach ind [lrange $xyzList [expr {$xyzSize - 3} ] end] { ;# Loop for the H2O index. Fragment (2).
@@ -1151,7 +1153,7 @@ proc ::ForceFieldToolKit::ORCA::WriteComFile_GenBonded { geomCHK com qmProc qmMe
     ::ForceFieldToolKit::SharedFcns::checkElementPDB
 
     #Set auxiliar list for xyz coordinates
-    set xyzList [[atomselect $newid "mass > 0"] get index]]
+    set xyzList [[atomselect $newid "mass > 0"] get index]
 
     #Open the output inp file
     # set com $::ForceFieldToolKit::GenBonded::com
@@ -1466,7 +1468,7 @@ proc ::ForceFieldToolKit::ORCA::buildFiles_GenDihScan { dihData outPath basename
     }
 
     # clean up
-    mol delete top
+    #mol delete top
 }
 
 #===========================================================================================================
