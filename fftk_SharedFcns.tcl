@@ -874,15 +874,13 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF { psf {resNameLimit 
                 # read lonepair info
                 set rc [scan $line "%d %d %s %f %f %f" nhost lpindex type dist ang dih]
                 if {$rc != 6} {
-                    # TODO: proper error msg
-                    puts "BAD LONE PAIR LINE IN PSF FILE"
+                    tk_messageBox -type ok -icon warning -message "PSF file parsing error!" -detail "$line"
                     return
                 }
 
                 # print warning if not colinear LP
                 if {$nhost != 2} {
-                    # TODO: proper error msg
-                    puts "not colinear!"
+                    puts "WARNING: non colinear LP are not supported by ffTK!"
                 }
 
                 lappend distances $dist

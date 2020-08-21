@@ -650,10 +650,10 @@ proc ::ForceFieldToolKit::BuildPar::analyzeCGenFF {} {
                         }
                         dict set LPDict $name dist [lindex $inline 6]
                     } else {
-                        # TODO: print warning
+                        tk_messageBox -type ok -icon warning -message "STR file parsing error!" -detail "Unrecognized atomname when processing LONEPAIR line: \n$inline"
                     }
                 } else {
-                    # TODO: print warning
+                    puts "WARNING: \"$inline\" ignored."
                 }
             }
         }
