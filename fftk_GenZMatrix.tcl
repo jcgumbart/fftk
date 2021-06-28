@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenZMatrix.tcl,v 1.16 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_GenZMatrix.tcl,v 1.17 2020/09/01 16:55:13 johns Exp $
 #
 #======================================================
 namespace eval ::ForceFieldToolKit::GenZMatrix:: {

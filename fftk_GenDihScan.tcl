@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenDihScan.tcl,v 1.14 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_GenDihScan.tcl,v 1.15 2020/09/01 16:55:13 johns Exp $
 #
 
 #======================================================

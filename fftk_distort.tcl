@@ -1,5 +1,5 @@
 #
-# $Id: fftk_distort.tcl,v 1.5 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_distort.tcl,v 1.6 2020/09/01 16:55:14 johns Exp $
 #
 
 namespace eval ::ForceFieldToolKit::Distortion:: {

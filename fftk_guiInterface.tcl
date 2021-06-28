@@ -1,5 +1,5 @@
 #
-# $Id: fftk_guiInterface.tcl,v 1.48 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_guiInterface.tcl,v 1.50 2020/09/25 21:52:58 gumbart Exp $
 #
 
 #======================================================
@@ -936,6 +936,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
                 set ::ForceFieldToolKit::BuildPar::cgenffResname [lindex [lsort -unique [$sel get resname]] 0]
                 set ::ForceFieldToolKit::BuildPar::cgenffChain   [lindex [lsort -unique [$sel get chain]] 0]
                 set ::ForceFieldToolKit::BuildPar::cgenffSegment [lindex [lsort -unique [$sel get segname]] 0]
+                if { [llength $::ForceFieldToolKit::BuildPar::cgenffSegment] == 0 } {
+                   set ::ForceFieldToolKit::BuildPar::cgenffSegment $::ForceFieldToolKit::BuildPar::cgenffChain
+                }
                 # clean up
                 $sel delete
                 mol delete $molid
