@@ -1228,7 +1228,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # Generate a menu for the QM selector. The menu is the same for all the tabs.
     # Set the qmSoft variable and apply default values everytime the QM selector is used.
     menu $w.menuQMSelector -tearoff no
-    $w.menuQMSelector add command -label "Gaussian" -command { 
+    $w.menuQMSelector add command -label "Gaussian" -command {
        set ::ForceFieldToolKit::qmSoft "Gaussian"
 
        ::ForceFieldToolKit::Gaussian::resetDefaultsGeomOpt
@@ -1236,7 +1236,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
        ::ForceFieldToolKit::Gaussian::resetDefaultsESP
        ::ForceFieldToolKit::Gaussian::resetDefaultsGenBonded
        ::ForceFieldToolKit::Gaussian::resetDefaultsGenDihScan
-    } 
+    }
     $w.menuQMSelector add command -label "ORCA"     -command {
        set ::ForceFieldToolKit::qmSoft "ORCA"
 
@@ -1246,7 +1246,16 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
        ::ForceFieldToolKit::ORCA::resetDefaultsGenBonded
        ::ForceFieldToolKit::ORCA::resetDefaultsGenDihScan
     }
-    
+    $w.menuQMSelector add command -label "Psi4"     -command {
+       set ::ForceFieldToolKit::qmSoft "Psi4"
+
+       ::ForceFieldToolKit::Psi4::resetDefaultsGeomOpt
+#       ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix
+#       ::ForceFieldToolKit::Psi4::resetDefaultsESP
+#       ::ForceFieldToolKit::Psi4::resetDefaultsGenBonded
+#       ::ForceFieldToolKit::Psi4::resetDefaultsGenDihScan
+    }
+
     #---------------------------------------------------#
     #  GeomOpt tab                                      #
     #---------------------------------------------------#
@@ -1302,7 +1311,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # QM Settings
     # -----------------
     # build the gaussian settings elements
-    ttk::labelframe $gopt.gaussian -labelanchor nw -padding $labelFrameInternalPadding -text "QM Settings" 
+    ttk::labelframe $gopt.gaussian -labelanchor nw -padding $labelFrameInternalPadding -text "QM Settings"
 
     ttk::menubutton $gopt.gaussian.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
@@ -1423,7 +1432,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 #               ::ForceFieldToolKit::ORCA::tempORCAmessage
 #               return
 #            }
-            ::ForceFieldToolKit::GeomOpt::writeOptPDB 
+            ::ForceFieldToolKit::GeomOpt::writeOptPDB
 	 }
     # grid update buttons
     #grid rowconfigure $gopt 5 -minsize 50
@@ -1433,13 +1442,13 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gopt.runUpdate.loadLog -column 0 -row 0 -sticky nswe -padx "10 5" -pady "10 0"; # -padx $buttonRunPadX -pady $buttonRunPadY
     grid $gopt.runUpdate.writeOptGeom -column 1 -row 0 -sticky nswe -padx "5 10" -pady "10 0"; # -padx $buttonRunPadX -pady $buttonRunPadY
 
-    
+
     # --------------------------------------------------#
     # Charge Optimization Method Selector               #
     # --------------------------------------------------#
     # create an entry for the charge optimization method selector (menubutton)
     # that will be reused across several tabs
-    
+
     menu $w.chargeMethodSelectorMenu -tearoff no
     $w.chargeMethodSelectorMenu add command -label "Water Interaction" -command { ::ForceFieldToolKit::gui::coptSelectMethod "waterInt" } ; # e.g., CHARMM
     $w.chargeMethodSelectorMenu add command -label "RESP Fitting"      -command { ::ForceFieldToolKit::gui::coptSelectMethod "resp" }     ; # e.g., AMBER
@@ -1460,7 +1469,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::frame $w.hlf.nb.genzmat
     $w.hlf.nb add $w.hlf.nb.genzmat -text "Water Int."
     grid columnconfigure $w.hlf.nb.genzmat 0 -weight 1
-    
+
     # variable for easier naming convention
     set gzm $w.hlf.nb.genzmat
 
@@ -1469,7 +1478,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::frame      $gzm.chargeMethodSelector
     ttk::label      $gzm.chargeMethodSelector.lbl      -text "Charge Optimization Method: " -anchor w -font TkDefaultFont
     ttk::menubutton $gzm.chargeMethodSelector.selector -direction below -menu $w.chargeMethodSelectorMenu -textvariable ::ForceFieldToolKit::gui::coptMethod -width 15
-    ttk::separator  $gzm.chargeMethodSelectorSep -orient horizontal 
+    ttk::separator  $gzm.chargeMethodSelectorSep -orient horizontal
 
     grid $gzm.chargeMethodSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
     grid $gzm.chargeMethodSelector.lbl      -column 0 -row 0 -sticky nwe
@@ -1592,7 +1601,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gzm.hbDonAcc -column 0 -row 3 -sticky nswe -padx $labelFramePadX -pady $labelFramePadY
     grid columnconfigure $gzm.hbDonAcc  0        -weight 1
     grid rowconfigure    $gzm.hbDonAcc {0 1 2 3} -uniform rt1
-    
+
     grid $gzm.hbDonAcc.donLbl        -column 0 -row 0 -sticky nswe
     grid $gzm.hbDonAcc.toggleLabels  -column 1 -row 0 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $gzm.hbDonAcc.donList       -column 0 -row 1 -sticky nswe -padx $entryPadX -pady $entryPadY
@@ -1628,7 +1637,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # grid the section elements
     grid $gzm.qm -column 0 -row 4 -sticky nsew -padx $labelFramePadX -pady $labelFramePadY
     grid rowconfigure $gzm.qm {0 1} -uniform rt1
-    
+
     grid $gzm.qm.selector   -column 0 -row 0 -columnspan 5 -sticky nsw
 
     grid $gzm.qm.procLbl   -column 0 -row 1 -sticky w
@@ -1729,7 +1738,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $gzm.run.generate -column 0 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
     grid $gzm.run.loadCOM  -column 1 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
     grid $gzm.run.loadLOG  -column 2 -row 0 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
-    
+
 
     #---------------------------------------------------#
     #  ChargeOpt  tab                                   #
@@ -1750,7 +1759,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::frame      $copt.chargeMethodSelector
     ttk::label      $copt.chargeMethodSelector.lbl      -text "Charge Optimization Method: " -anchor w -font TkDefaultFont
     ttk::menubutton $copt.chargeMethodSelector.selector -direction below -menu $w.chargeMethodSelectorMenu -textvariable ::ForceFieldToolKit::gui::coptMethod -width 15
-    ttk::separator  $copt.chargeMethodSelectorSep -orient horizontal 
+    ttk::separator  $copt.chargeMethodSelectorSep -orient horizontal
 
     grid $copt.chargeMethodSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
     grid $copt.chargeMethodSelector.lbl      -column 0 -row 0 -sticky nwe
@@ -2668,7 +2677,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::frame      $cesp.selectorFrame
     ttk::label      $cesp.selectorFrame.lbl -text "Charge Optimization Method: " -anchor w -font TkDefaultFont
     ttk::menubutton $cesp.selectorFrame.selector -direction below -menu $w.chargeMethodSelectorMenu -textvariable ::ForceFieldToolKit::gui::coptMethod -width 15
-    ttk::separator  $cesp.selectorSep -orient horizontal 
+    ttk::separator  $cesp.selectorSep -orient horizontal
 
     grid $cesp.selectorFrame     -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
     grid $cesp.selectorFrame.lbl      -column 0 -row 0 -sticky nwe
@@ -2790,7 +2799,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::labelframe $oesp.input -labelanchor nw -text "Input" -padding $labelFrameInternalPadding
     ttk::label $oesp.input.lblWidget -text "$downPoint Input" -anchor w -font TkDefaultFont
     $oesp.input configure -labelwidget $oesp.input.lblWidget
-        
+
     # build placeholder label (when compacted)
     ttk::label $oesp.inputPlaceHolder -text "$rightPoint Input" -anchor w -font TkDefaultFont
 
@@ -2827,19 +2836,19 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             -command {
                 set tempfile [tk_getOpenFile -title "Select a PDB File" -filetypes $::ForceFieldToolKit::gui::pdbType]
                 if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::Configuration::geomOptPDB $tempfile }
-            }   
+            }
     ttk::label  $oesp.input.netChargeLbl -text "Net Charge:" -anchor center
     ttk::entry  $oesp.input.netCharge -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::netCharge -width 3 -justify center
     ttk::label  $oesp.input.resNameLbl -text "Resname:" -anchor center
     ttk::entry  $oesp.input.resName -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::resName -justify center
     ttk::button $oesp.input.resTakeFromTop -text "Resname From TOP" \
-        -command { 
+        -command {
             if { [llength [molinfo list]] == 0 } { tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "No PSF/PDB loaded in VMD."; return }
             set sel [atomselect top all]
             set ::ForceFieldToolKit::ChargeOpt::ESP::resName [lindex [$sel get resname] 0]
             $sel delete
             set ::ForceFieldToolKit::ChargeOpt::ESP::inputName $::ForceFieldToolKit::ChargeOpt::ESP::resName
-            set ::ForceFieldToolKit::ChargeOpt::ESP::newPsfName [format %s-opt.psf [file rootname $::ForceFieldToolKit::ChargeOpt::ESP::psfFile]] 
+            set ::ForceFieldToolKit::ChargeOpt::ESP::newPsfName [format %s-opt.psf [file rootname $::ForceFieldToolKit::ChargeOpt::ESP::psfFile]]
         }
     ttk::button $oesp.input.load -text "Load PSF/PDB" \
         -command {
@@ -2855,7 +2864,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             mol addfile $::ForceFieldToolKit::Configuration::geomOptPDB waitfor all
             ::ForceFieldToolKit::gui::consoleMessage "PSF/PDB files loaded (Opt. ESP)"
         }
-        
+
     # grid contents
     grid $oesp.input.psfFileLbl     -column 0 -row 0 -sticky nswe
     grid $oesp.input.psfFile        -column 1 -row 0 -columnspan 5 -sticky nswe -padx $entryPadX -pady $entryPadY
@@ -2871,7 +2880,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $oesp.input.load           -column 6 -row 2 -sticky nsew -padx $vbuttonPadX -pady $vbuttonPadY
 
 
-    # Charge Constraints 
+    # Charge Constraints
     ttk::labelframe $oesp.cconstr -labelanchor nw -padding $labelFrameInternalPadding -text "Charge Constraints"
     ttk::label $oesp.cconstr.lblWidget -text "$downPoint Charge Constraints" -anchor w -font TkDefaultFont
     $oesp.cconstr configure -labelwidget $oesp.cconstr.lblWidget
@@ -2923,8 +2932,8 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     menu $oesp.cconstr.editRestraint.menu -tearoff no
         $oesp.cconstr.editRestraint.menu add command -label "Static"  -command { set ::ForceFieldToolKit::gui::espEditRestraint "Static" }
         $oesp.cconstr.editRestraint.menu add command -label "Dynamic" \
-	    -command { 
-		set ::ForceFieldToolKit::gui::espEditRestraint "Dynamic" 
+	    -command {
+		set ::ForceFieldToolKit::gui::espEditRestraint "Dynamic"
 ##		set ::ForceFieldToolKit::gui::espEditRestNum [lindex $::ForceFieldToolKit::gui::espEditGroup 0]
 	    }
         $oesp.cconstr.editRestraint.menu add command -label "None"    -command { set ::ForceFieldToolKit::gui::espEditRestraint "None" }
@@ -2950,7 +2959,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             -values [list $::ForceFieldToolKit::gui::espEditGroup $::ForceFieldToolKit::gui::espEditInit $::ForceFieldToolKit::gui::espEditRestraint $::ForceFieldToolKit::gui::espEditRestNum]
         }
     ttk::button $oesp.cconstr.buttonFrame.editCancel -text "$cancel" -width 1 -command {::ForceFieldToolKit::gui::espSetEditData "cconstr"}
-        
+
     # set a binding to copy information into the Edit Box when the seletion changes
     bind $oesp.cconstr.chargeData <<TreeviewSelect>> { ::ForceFieldToolKit::gui::espSetEditData "cconstr" }
     bind $oesp.cconstr.chargeData <KeyPress-Delete> {
@@ -2961,7 +2970,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
         ::ForceFieldToolKit::gui::espDisableEditData
     }
     bind $oesp.cconstr.chargeData <KeyPress-Escape> { .fftk_gui.hlf.nb.optESP.cconstr.chargeData selection set {} }
-    
+
     ttk::button $oesp.cconstr.guess -text "Guess" \
         -command {
             if { [llength [molinfo list]] == 0 } {
@@ -2975,7 +2984,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             for {set i 0} {$i < [llength $cgNames]} {incr i} {
                 .fftk_gui.hlf.nb.optESP.cconstr.chargeData insert {} end -values [list "[lindex $cgNames $i]" "[lindex $cgInit $i]" "None" "N/A"]
             }
-            unset cgNames; unset cgInit          
+            unset cgNames; unset cgInit
         }
     ttk::button $oesp.cconstr.add -text "Add" -command { .fftk_gui.hlf.nb.optESP.cconstr.chargeData insert {} end -values [list "AtomName1 AtomName2 ... AtomNameN" "0.0" "None"] }
     ttk::button $oesp.cconstr.delete -text "Delete" \
@@ -3025,7 +3034,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
                 $tv set $id group [lindex $groupAtoms 0]
                 $tv set $id restNum N/A
                 set insertionIndex [expr { int([$tv index $id]) }]
-                incr insertionIndex 
+                incr insertionIndex
                 for {set i 1} {$i < [llength $groupAtoms]} {incr i} {
                     set groupAtom [lindex $groupAtoms $i]
                     #if { $restraintAtom eq "N/A" } { set rA "N/A" } else { set rA $groupAtom }
@@ -3067,7 +3076,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             }
             unset currentID previousID
         }
-            
+
     # grid elements
     grid $oesp.cconstr.groupLbl      -column 0 -row 0 -sticky nswe
     grid $oesp.cconstr.initLbl       -column 1 -row 0 -sticky nswe
@@ -3075,7 +3084,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $oesp.cconstr.restNumLbl    -column 3 -row 0 -sticky nswe
     grid $oesp.cconstr.chargeData    -column 0 -row 1 -columnspan 4 -rowspan 5 -sticky nswe
     grid $oesp.cconstr.chargeScroll  -column 4 -row 1               -rowspan 5 -sticky nswe
-    
+
     grid $oesp.cconstr.guess         -column 5 -row 1 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $oesp.cconstr.add           -column 5 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $oesp.cconstr.delete        -column 5 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
@@ -3084,21 +3093,21 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $oesp.cconstr.split         -column 6 -row 2 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $oesp.cconstr.moveUp        -column 6 -row 3 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $oesp.cconstr.moveDown      -column 6 -row 4 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    
+
     grid $oesp.cconstr.editLbl       -column 0 -row 6 -sticky nswe
     grid $oesp.cconstr.editGroup     -column 0 -row 7 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $oesp.cconstr.editInit      -column 1 -row 7 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $oesp.cconstr.editRestraint -column 2 -row 7 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $oesp.cconstr.editRestNum   -column 3 -row 7 -sticky nswe -padx $entryPadX -pady $entryPadY
     grid $oesp.cconstr.buttonFrame   -column 5 -row 7 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
-    grid $oesp.cconstr.buttonFrame.editUpdate -column 0 -row 0 -sticky nswe 
+    grid $oesp.cconstr.buttonFrame.editUpdate -column 0 -row 0 -sticky nswe
     grid $oesp.cconstr.buttonFrame.editCancel -column 1 -row 0 -sticky nswe
 
     grid columnconfigure $oesp.cconstr.buttonFrame 0 -weight 1
-    grid columnconfigure $oesp.cconstr.buttonFrame 1 -weight 1  
+    grid columnconfigure $oesp.cconstr.buttonFrame 1 -weight 1
 
-        
-    # Prepare Resp Program Input Files 
+
+    # Prepare Resp Program Input Files
     ttk::labelframe $oesp.inSettings -labelanchor nw -padding $labelFrameInternalPadding -text "Input File Settings"
     ttk::label      $oesp.inSettings.lblWidget -text "$downPoint Input File Settings" -anchor w -font TkDefaultFont
     $oesp.inSettings configure -labelwidget $oesp.inSettings.lblWidget
@@ -3148,11 +3157,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::label  $oesp.inSettings.ihfreeLbl     -text "ihfree:" -anchor e
     ttk::entry  $oesp.inSettings.ihfree        -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::ihfree -justify center -width 5
     ttk::label  $oesp.inSettings.qwtLbl        -text "qwt:"    -anchor center
-    ttk::entry  $oesp.inSettings.qwt           -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qwt    -justify center -width 10  
+    ttk::entry  $oesp.inSettings.qwt           -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qwt    -justify center -width 10
     ttk::label  $oesp.inSettings.iqoptLbl      -text "iqopt:"  -anchor center
     ttk::entry  $oesp.inSettings.iqopt         -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::iqopt  -justify center -width 5
     ttk::button $oesp.inSettings.resetDefaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::SharedFcns::resetInputDefaultsESP }
-        
+
     ttk::separator $oesp.inSettings.sep1 -orient horizontal
     ttk::button    $oesp.inSettings.writeInput -text "Write Input Files" \
         -command {
@@ -3162,7 +3171,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 #           	return
 #        	}
                 ::ForceFieldToolKit::ChargeOpt::ESP::writeDatFile
-                
+
                 # gather the TV data
                 set chargeGroups {}; set chargeInit {}; set restrainData {}; set restrainNum {}
                 foreach tvItem [.fftk_gui.hlf.nb.optESP.cconstr.chargeData children {}] {
@@ -3187,7 +3196,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $oesp.inSettings.ihfreeLbl     -column 0 -row 3 -sticky nswe
     grid $oesp.inSettings.ihfree        -column 1 -row 3 -sticky we
     grid $oesp.inSettings.qwtLbl        -column 2 -row 3 -sticky nswe
-    grid $oesp.inSettings.qwt           -column 3 -row 3 -sticky we  
+    grid $oesp.inSettings.qwt           -column 3 -row 3 -sticky we
     grid $oesp.inSettings.iqoptLbl      -column 4 -row 3 -sticky nswe
     grid $oesp.inSettings.iqopt         -column 5 -row 3 -sticky we
     grid $oesp.inSettings.resetDefaults -column 6 -row 3 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
@@ -3195,12 +3204,12 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     grid $oesp.inSettings.sep1          -column 0 -row 4 -columnspan 9 -sticky we   -padx $hsepPadX -pady $hsepPadY
     grid $oesp.inSettings.writeInput    -column 0 -row 5 -columnspan 9 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
 
-        
+
     # Calc. ESP section
     ttk::labelframe $oesp.runESP -labelanchor nw -padding $labelFrameInternalPadding -text "Calculate RESP Charges"
     ttk::label $oesp.runESP.lblWidget -text "$downPoint Calculate RESP Charges" -anchor w -font TkDefaultFont
     $oesp.runESP configure -labelwidget $oesp.runESP.lblWidget
-        
+
     # build placeholder label (when compacted)
     ttk::label $oesp.runESPPlaceHolder -text "$rightPoint Calculate RESP Charges" -anchor w -font TkDefaultFont
 
@@ -3252,7 +3261,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
         }
     ttk::separator $oesp.runESP.runSep -orient horizontal
     ttk::button $oesp.runESP.runESP -text "Calc. RESP Charges" \
-        -command { 
+        -command {
             # For the moment, stop the procedure if ORCA was selected
 #            if {$::ForceFieldToolKit::qmSoft eq "ORCA"} {
 #              ::ForceFieldToolKit::ORCA::tempORCAmessage
@@ -3291,7 +3300,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
         grid $oesp.runESP.runESP      -column 0 -row 3 -columnspan 3 -sticky nswe
         grid rowconfigure $oesp.runESP 3 -minsize 50
     }
-        
+
     # By default, hide the RESP tabs on startup
     $w.hlf.nb hide $w.hlf.nb.calcESP
     $w.hlf.nb hide $w.hlf.nb.optESP
@@ -4108,9 +4117,9 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     # --------------------------------------------------#
     # create an entry for the dih/impr optimization selector (menubutton)
     # that will be reused across several tabs
-    
+
     menu $w.dihImprSelectorMenu -tearoff no
-    $w.dihImprSelectorMenu add command -label "Dihedral fitting" -command { ::ForceFieldToolKit::gui::dihImprSelectMethod "dih" } 
+    $w.dihImprSelectorMenu add command -label "Dihedral fitting" -command { ::ForceFieldToolKit::gui::dihImprSelectMethod "dih" }
     $w.dihImprSelectorMenu add command -label "Improper fitting" -command { ::ForceFieldToolKit::gui::dihImprSelectMethod "impr" }
 
 
@@ -4137,7 +4146,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::frame      $gds.dihImprSelector
     ttk::label      $gds.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
     ttk::menubutton $gds.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
-##    ttk::separator  $gds.dihImprSelectorSep -orient horizontal 
+##    ttk::separator  $gds.dihImprSelectorSep -orient horizontal
 
     grid $gds.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
     grid $gds.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
@@ -4466,7 +4475,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 #              ::ForceFieldToolKit::ORCA::tempORCAmessage
 #              return
 #            }
-	    ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI 
+	    ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI
 	    }
 
     # grid generate section
@@ -4849,7 +4858,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::frame      $dopt.dihImprSelector
     ttk::label      $dopt.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
     ttk::menubutton $dopt.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
-    ttk::separator  $dopt.dihImprSelectorSep -orient horizontal 
+    ttk::separator  $dopt.dihImprSelectorSep -orient horizontal
 
     grid $dopt.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
     grid $dopt.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
@@ -4984,7 +4993,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # build QM target data (Log files) elements
     # QM selector
-    ttk::menubutton $dopt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15 
+    ttk::menubutton $dopt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::label $dopt.qmt.lbl -text "QM Dihedral Scan Output Files" -anchor w
     ttk::treeview $dopt.qmt.tv -selectmode browse -yscrollcommand "$dopt.qmt.scroll set"
@@ -5841,7 +5850,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 #              ::ForceFieldToolKit::ORCA::tempORCAmessage
 #              return
 #            }
-	    ::ForceFieldToolKit::gui::doptRunRefine 
+	    ::ForceFieldToolKit::gui::doptRunRefine
 	    }
 
     # grid the refinement run section
@@ -5867,7 +5876,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 #              ::ForceFieldToolKit::ORCA::tempORCAmessage
 #              return
 #            }
-	    ::ForceFieldToolKit::gui::doptRunOpt 
+	    ::ForceFieldToolKit::gui::doptRunOpt
 	    }
 
     # grid the run section
@@ -5899,7 +5908,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::frame      $imopt.dihImprSelector
     ttk::label      $imopt.dihImprSelector.lbl      -text "Dihedrals/Impropers: " -anchor w -font TkDefaultFont
     ttk::menubutton $imopt.dihImprSelector.selector -direction below -menu $w.dihImprSelectorMenu -textvariable ::ForceFieldToolKit::gui::dihImprMethod -width 15
-    ttk::separator  $imopt.dihImprSelectorSep -orient horizontal 
+    ttk::separator  $imopt.dihImprSelectorSep -orient horizontal
 
     grid $imopt.dihImprSelector    -column 0 -row 0 -sticky nswe -padx $hsepPadX -pady $labelFramePadY
     grid $imopt.dihImprSelector.lbl      -column 0 -row 0 -sticky nwe
@@ -6034,7 +6043,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 
     # build QM target data (Log files) elements
     # QM selector
-    ttk::menubutton $imopt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15 
+    ttk::menubutton $imopt.qmt.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::label $imopt.qmt.lbl -text "QM Dihedral Scan Output Files" -anchor w
     ttk::treeview $imopt.qmt.tv -selectmode browse -yscrollcommand "$imopt.qmt.scroll set"
@@ -6254,7 +6263,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     grid $imopt.parSet.delete -column 6 -row 6 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $imopt.parSet.clear -column 6 -row 7 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid $imopt.parSet.editLbl -column 0 -row 9 -sticky nswe
-    grid $imopt.parSet.editDef -column 0 -row 10 -sticky nswe -pady "0 5" 
+    grid $imopt.parSet.editDef -column 0 -row 10 -sticky nswe -pady "0 5"
     grid $imopt.parSet.editFC -column 1 -row 10 -sticky nswe -pady "0 5" -padx 10
     grid $imopt.parSet.editButtons -column 6 -row 10 -sticky nswe -padx $vbuttonPadX -pady $vbuttonPadY
     grid columnconfigure $imopt.parSet.editButtons 0 -weight 1
@@ -6549,7 +6558,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
 #              ::ForceFieldToolKit::ORCA::tempORCAmessage
 #              return
 #            }
-	    ::ForceFieldToolKit::gui::imoptRunOpt 
+	    ::ForceFieldToolKit::gui::imoptRunOpt
 	    }
 
     # grid the run section
