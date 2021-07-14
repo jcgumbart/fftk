@@ -71,13 +71,13 @@ proc ::ForceFieldToolKit::Psi4::readOutGeomOpt { molId logFile } {
 
     while { ![eof $inFile] } {
         set inLine [string trim [gets $inFile]]
-        if { $inLine eq "Input orientation:" } {
+        if { $inLine eq "OPTKING Finished Execution" } {
             # burn the coord header
-            for {set i 0} {$i < 4} {incr i} { gets $inFile }
+            for {set i 0} {$i < 8} {incr i} { gets $inFile }
             # read coordinates
             set coords {}
             while { ![regexp {^-*$} [set inLine [string trim [gets $inFile]]]] } {
-                lappend coords [lrange $inLine 3 5]
+                lappend coords [lrange $inLine 1 4]
             }
             set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $coords]
 
@@ -112,13 +112,13 @@ proc ::ForceFieldToolKit::Psi4::writePDBGeomOpt { psf pdb logFile optPdb } {
 
     while { ![eof $inFile] } {
         set inLine [string trim [gets $inFile]]
-        if { $inLine eq "Input orientation:" } {
+        if { $inLine eq "OPTKING Finished Execution" } {
             # burn the coord header
-            for {set i 0} {$i < 4} {incr i} { gets $inFile }
+            for {set i 0} {$i < 8} {incr i} { gets $inFile }
             # read coordinates
             set coords {}
             while { ![regexp {^-*$} [set inLine [string trim [gets $inFile]]]] } {
-                lappend coords [lrange $inLine 3 5]
+                lappend coords [lrange $inLine 1 4]
             }
             set coords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $coords]
 
