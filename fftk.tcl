@@ -69,6 +69,7 @@ source [file join $env(FFTKDIR) fftk_GenDihScan.tcl]
 source [file join $env(FFTKDIR) fftk_DihOpt.tcl]
 source [file join $env(FFTKDIR) fftk_SharedFcns.tcl]
 source [file join $env(FFTKDIR) fftk_distort.tcl]
+source [file join $env(FFTKDIR) fftk_QMPsi4.tcl]
 
 # only load gui-driven code when running from VMD GUI
 # (i.e., not VMD text mode)
