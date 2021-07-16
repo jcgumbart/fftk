@@ -867,7 +867,11 @@ proc ::ForceFieldToolKit::SharedFcns::LonePair::initFromPSF { psf {resNameLimit 
                     set nent [lindex $line 1]
                     set index 0
 
-                    set mode readnumlp
+                    if {$nrec > 0} {
+                        set mode readnumlp
+                    } {
+                        set mode quit
+                    }
                 }
             }
             readnumlp {
