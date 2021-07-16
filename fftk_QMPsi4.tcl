@@ -42,6 +42,8 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
     puts $outfile "import psi4"
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"output.dat\", False)"
+    puts $outfile "psi4.set_memory(\"$qmMem\")"
+    puts $outfile "psi4.set_multiplicity($qmMult)"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
 
