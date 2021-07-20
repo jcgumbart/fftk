@@ -30,7 +30,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
 
     for {set i 0} {$i < [molinfo $molID get numatoms]} {incr i} {
         set temp [atomselect $molID "index $i"]
-        lappend atom_info [list [$temp get element][expr $i+1] [$temp get x] [$temp get y] [$temp get z]]
+        lappend atom_info [list [$temp get element] [$temp get x] [$temp get y] [$temp get z]]
         lappend Gnames [$temp get element][expr $i+1]
         $temp delete
     }
@@ -48,7 +48,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
 
     # write the coordinates
     foreach atom_entry $atom_info {
-        puts $outfile "[string index [lindex $atom_entry 0] 0] [format %16.8f [lindex $atom_entry 1]] [format %16.8f [lindex $atom_entry 2]] [format %16.8f [lindex $atom_entry 3]]"
+        puts $outfile "[lindex $atom_entry 0] [format %16.8f [lindex $atom_entry 1]] [format %16.8f [lindex $atom_entry 2]] [format %16.8f [lindex $atom_entry 3]]"
    }
 
     puts $outfile {""")}
