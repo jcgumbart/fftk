@@ -17,7 +17,7 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsGeomOpt {} {
     set ::ForceFieldToolKit::GeomOpt::qmMem 1
     set ::ForceFieldToolKit::GeomOpt::qmCharge 0
     set ::ForceFieldToolKit::GeomOpt::qmMult 1
-    set ::ForceFieldToolKit::GeomOpt::qmRoute \"mp2/6-31G*\"
+    set ::ForceFieldToolKit::GeomOpt::qmRoute "mp2/6-31G*"
 
 }
 #===========================================================================================================
@@ -55,7 +55,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
     puts $outfile ""
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize($qmRoute, molecule=molecule)"
+    puts $outfile "psi4.optimize(\"$qmRoute\", molecule=molecule)"
 
     # empty line to terminate
     puts $outfile ""
@@ -158,37 +158,37 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
 
     # computes the geometry-dependent position of water and
     # writes Psi4 input files for optimizing water interaction
-    # assign Psi4 atom names and gather x,y,z for output gau file
+    # assign Psi4 atom names and gather x,y,z for output python file
     set Gnames {}
     set atom_info {}
     for {set i 0} {$i < [molinfo top get numatoms]} {incr i} {
         set temp [atomselect top "index $i"]
-        lappend atom_info [list [$temp get element][expr $i+1] [$temp get x] [$temp get y] [$temp get z]]
+        lappend atom_info [list [$temp get element] [$temp get x] [$temp get y] [$temp get z]]
         lappend Gnames [$temp get element][expr $i+1]
         $temp delete
     }
+
+    # length of $atom_info
+    set len_mol [llength $atom_info]
 
     #========#
     # DONORS #
     #========#
     foreach donorAtom $donList {
-
 		set donorName [[atomselect top "index $donorAtom"] get name]
 
 		# open output file
-    	        set outname [file join $outFolderPath ${basename}-DON-${donorName}.gau]
-    	        set outfile [open $outname w]
+    set outname [file join $outFolderPath ${basename}-DON-${donorName}.py]
+    set outfile [open $outname w]
 
-    	        # write the header
-		puts $outfile "%chk=${basename}-DON-${donorName}.chk"
-		puts $outfile "%nproc=$qmProc"
-		puts $outfile "%mem=${qmMem}GB"
-                puts $outfile "$qmRoute"
-		puts $outfile ""
-		puts $outfile "<qmtool> simtype=\"Geometry optimization\" </qmtool>"
-		puts $outfile "${basename}-DON-${donorName}"
-		puts $outfile ""
-		puts $outfile "$qmCharge $qmMult"
+    # start python code
+    puts $outfile "import psi4"
+    puts $outfile ""
+    puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}\", False)"
+    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_options({\"opt_coordinates\": \"cartesian\"})"
+    puts $outfile ""
+    puts $outfile {molecule = psi4.geometry("""}
 
 		# write the cartesian coords for the molecule
 		foreach atom_entry $atom_info {
@@ -196,8 +196,15 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
 		}
 
 		# build / write the zmatrix
-		::ForceFieldToolKit::Psi4::writeZmat $donorAtom donor $Gnames $outfile
-		close $outfile
+		::ForceFieldToolKit::Psi4::writeZmat $donorAtom donor $Gnames $outfile $len_mol
+
+    puts $outfile {""")}
+    puts $outfile ""
+    puts $outfile "molecule.set_multiplicity($qmMult)"
+    puts $outfile "molecule.set_molecular_charge($qmCharge)"
+    puts $outfile "psi4.optimize(\"$qmRoute\", molecule=molecule)"
+
+    close $outfile
     }; # end DONORS
 
     #===========#
@@ -207,19 +214,17 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
 		set acceptorName [[atomselect top "index $acceptorAtom"] get name]
 
 		# open output file
-		set outname [file join $outFolderPath ${basename}-ACC-${acceptorName}.gau]
+		set outname [file join $outFolderPath ${basename}-ACC-${acceptorName}.py]
 		set outfile [open $outname w]
 
-		# write the header
-		puts $outfile "%chk=${basename}-ACC-${acceptorName}.chk"
-		puts $outfile "%nproc=$qmProc"
-		puts $outfile "%mem=${qmMem}GB"
-                puts $outfile "$qmRoute"
-		puts $outfile ""
-		puts $outfile "<qmtool> simtype=\"Geometry optimization\" </qmtool>"
-		puts $outfile "${basename}-ACC-${acceptorName}"
-		puts $outfile ""
-		puts $outfile "$qmCharge $qmMult"
+    # start python code
+    puts $outfile "import psi4"
+    puts $outfile ""
+    puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}\", False)"
+    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_options({\"opt_coordinates\": \"cartesian\"})"
+    puts $outfile ""
+    puts $outfile {molecule = psi4.geometry("""}
 
 		# write the cartesian coords for the molecule
 		foreach atom_entry $atom_info {
@@ -227,8 +232,15 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
 		}
 
 		# build / write the zmatrix
-		::ForceFieldToolKit::Psi4::writeZmat $acceptorAtom acceptor $Gnames $outfile
-		close $outfile
+		::ForceFieldToolKit::Psi4::writeZmat $acceptorAtom acceptor $Gnames $outfile $len_mol
+
+    puts $outfile {""")}
+    puts $outfile ""
+    puts $outfile "molecule.set_multiplicity($qmMult)"
+    puts $outfile "molecule.set_molecular_charge($qmCharge)"
+    puts $outfile "psi4.optimize(\"$qmRoute\", molecule=molecule)"
+
+    close $outfile
 
 		# CARBONYL AND HALOGEN EXCEPTIONS
 		# there is a special exception for X=O cases (e.g. C=O, P=O, S=O)
@@ -239,7 +251,7 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
     }
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
+proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } {
 	# builds and writes the z-matrix to file
 
 	# passed:
@@ -287,12 +299,16 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
 			$bSel delete
 		}
 
+    # define x and Ow as the indices (start from 1) of the ghost atom and O, respectively
+    set x [expr $len_mol + 1]
+    set Ow [expr $len_mol + 2]
+
 		if { $diatomic || $linear } {
 			# if either diatomic or linear, build a zmatrix for a 1D scan
 
 			# get the relevant gnames
-			set aGname [lindex $gnames $aInd]
-			set bGname [lindex $gnames $bondlistA]
+			set aGname [rxpr $aInd + 1]
+			set bGname [expr $bondlistA + 1]
 
 			# for non-diatomic linear cases, we will define x in cartesian coords
 			if { $linear } {
@@ -321,16 +337,16 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
 			# write the rest of the z-matrix
 			if { $class eq "donor" } {
 				# donor
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" Ow $aGname rAH x 90.00 $bGname 180.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" H1w Ow 0.9572 $aGname 127.74 x 0.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H2w Ow 0.9572 $aGname 127.74 x 180.00]
-				puts $outfile "rAH 2.0"
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" O $aGname rAH $x 90.00 $bGname 180.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" H $Ow 0.9572 $aGname 127.74 $x 0.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
+				puts $outfile "rAH = 2.0"
 			} else {
 				# acceptor
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" Ow $aGname rAH x 90.00 $bGname 180.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" H2w Ow 0.9572 $aGname 104.52 x   0.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H1w Ow 0.9572 H2w 104.52 x 0.0]
-				puts $outfile "rAH 2.0"
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" O $aGname rAH $x 90.00 $bGname 180.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" H $Ow 0.9572 $aGname 104.52 $x   0.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H $Ow 0.9572 H2w 104.52 $x 0.0]
+				puts $outfile "rAH = 2.0"
 			}
 
 			# clean up and return
@@ -364,18 +380,18 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
 			set cSel [atomselect top "index $cInd"]
 
 			# get gnames
-			set aGname [lindex $gnames $aInd]
-			set bGname [lindex $gnames $bInd]
-			set cGname [lindex $gnames $cInd]
+			set aGname [expr $aInd + 1]
+			set bGname [expr $bInd + 1]
+			set cGname [expr $cInd + 1]
 
 			if { $class eq "donor" } {
 				# donor
 				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $aGname 1.0 $bGname 90.00 $cGname dih]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $aGname rAH x 90.00 $bGname 180.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w Ow 0.9572 $aGname 127.74 x 0.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9572 $aGname 127.74 x 180.00]
-				puts $outfile "rAH  2.0"
-				puts $outfile "dih  0.0"
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $aGname rAH $x 90.00 $bGname 180.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $Ow 0.9572 $aGname 127.74 $x 0.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
+				puts $outfile "rAH = 2.0"
+				puts $outfile "dih = 0.0"
 			} else {
 				# acceptor
 				# call helper function to find probe position
@@ -385,12 +401,19 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
 				set mAng [::QMtool::bond_angle $probePos [measure center $aSel] [measure center $cSel]]
 				set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $cSel] [measure center $bSel]]
 
+        # need to redefine x and Ow because the ghost atom X is at index $len_mol + 2
+        # and Ow is at index $len_mol + 3 instead
+        # In addition, define H1w as the index of H1w
+        set x [expr {$len_mol + 2}]
+        set Ow [expr {$len_mol + 3}]
+        set H1w [expr {$len_mol + 1}]
+
 				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $cGname [format %3.2f $mAng] $bGname [format %3.2f $mDih]]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x H1w 1.0 $aGname 90.00 $cGname 0.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow H1w 0.9527 x 90.00 $aGname 180.00]
-				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9527 H1w 104.52 x dih]
-				puts $outfile "rAH  2.0"
-				puts $outfile "dih  0.0"
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $cGname 0.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $H1w 0.9527 $x 90.00 $aGname 180.00]
+				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9527 $H1w 104.52 $x dih]
+				puts $outfile "rAH = 2.0"
+				puts $outfile "dih = 0.0"
 			}
 
 			# clean up and return
@@ -410,9 +433,9 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
 		set cSel [atomselect top "index $cInd"]
 
 		# find gnames
-		set aGname [lindex $gnames $aInd]
-		set bGname [lindex $gnames $bInd]
-		set cGname [lindex $gnames $cInd]
+		set aGname [expr $aInd + 1]
+		set bGname [expr $bInd + 1]
+		# set cGname [expr $cInd + 1]   # if cGname is set to be "x2" below, then this line is redundant
 
 		# test if C is valid choice
 		set abcAng [expr {abs([measure angle [list $aInd $bInd $cInd]])}]
@@ -425,32 +448,47 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile } {
 
 		if { !$validC } {
 			# if C is invalid, ABC are linear and we need a second dummy atom in lieu of the original C atom
-			set cGname "x2"
+			set cGname [expr $len_mol + 1]
 			set x2Pos [coordtrans [trans center [measure center $aSel] axis [vecsub [measure center $cSel] [measure center $bSel]] 180.0 deg] $probePos]
 			set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $bSel] $x2Pos]
-			puts $outfile [format "%3s  %.4f  %.4f  %.4f" x2 [lindex $x2Pos 0] [lindex $x2Pos 1] [lindex $x2Pos 2]]
+			puts $outfile [format "%3s  %.4f  %.4f  %.4f" X [lindex $x2Pos 0] [lindex $x2Pos 1] [lindex $x2Pos 2]]
+
+      # define x, Ow, H1w, and H2w
+      set x [expr $len_mol + 3]
+      set Ow [expr $len_mol + 2]
+      set H1w [expr $len_mol + 4]
+      set H2w [expr $len_mol + 5]
+
 		} else {
 			# C is valid, we can use it to define the dihedral
 			set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $bSel] [measure center $cSel]]
+
+      set cGname [expr $len_mol + 1]
+
+      # define x, Ow, H1w, and H2w
+      set x [expr $len_mol + 2]
+      set Ow [expr $len_mol + 1]
+      set H1w [expr $len_mol + 3]
+      set H2w [expr $len_mol + 4]
 		}
 
 		if { $class eq "donor" } {
 			# donor
 			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
-			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x Ow 1.0 $aGname 90.00 $bGname dih]
-			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w Ow 0.9572 $aGname 127.74 x 0.00]
-			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9572 $aGname 127.74 x 180.00]
-            puts $outfile "rAH  2.0"
-            puts $outfile "dih  0.0"
+			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $Ow 1.0 $aGname 90.00 $bGname dih]
+			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $Ow 0.9572 $aGname 127.74 $x 0.00]
+			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9572 $aGname 127.74 $x 180.00]
+            puts $outfile "rAH = 2.0"
+            puts $outfile "dih = 0.0"
 
 		} else {
 			# acceptor
 			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
-			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x H1w 1.0 $aGname 90.00 $bGname 0.00]
-			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow H1w 0.9572 x 90.00 $aGname 180.00]
-			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9572 H1w 104.52 x dih]
-			puts $outfile "rAH  2.0"
-			puts $outfile "dih  0.0"
+			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
+			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $H1w 0.9572 $x 90.00 $aGname 180.00]
+			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9572 $H1w 104.52 $x dih]
+			puts $outfile "rAH = 2.0"
+			puts $outfile "dih = 0.0"
 		}
 
 		# clean up atomselections and return
@@ -667,72 +705,79 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
 
     for {set i 0} {$i < [molinfo top get numatoms]} {incr i} {
         set temp [atomselect top "index $i"]
-        lappend atom_info [list [$temp get element][expr $i+1] [$temp get x] [$temp get y] [$temp get z]]
+        lappend atom_info [list [$temp get element] [$temp get x] [$temp get y] [$temp get z]]
         lappend Gnames [$temp get element][expr $i+1]
         $temp delete
     }
     mol delete top
 
-    # Write the HF Single Point File
+    ### Write the HF Single Point File
     # open output file
-    set outfile [open [file join $outFolderPath ${basename}-sp-HF.gau] w]
+    set outfile [open [file join $outFolderPath ${basename}-sp-HF.py] w]
 
-    # write the header
-    puts $outfile "%chk=${basename}-sp-HF.chk"
-    puts $outfile "%nproc=$qmProc"
-    puts $outfile "%mem=${qmMem}GB"
-    puts $outfile "# HF/6-31G* SCF=Tight"
+    # start python code
+    puts $outfile "import psi4"
     puts $outfile ""
-    puts $outfile "<qmtool> simtype=\"Single point calculation\" </qmtool>"
-    puts $outfile "${basename}-sp-HF"
+    puts $outfile "psi4.set_output_file(\"${basename}-sp-HF.dat\", False)"
+    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
-    puts $outfile "$qmCharge $qmMult"
+    puts $outfile {molecule = psi4.geometry("""}
 
-    # write the cartesian coords
+    # write the coordinates
     foreach atom_entry $atom_info {
-        puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
-    }
+        puts $outfile "[lindex $atom_entry 0] [format %16.8f [lindex $atom_entry 1]] [format %16.8f [lindex $atom_entry 2]] [format %16.8f [lindex $atom_entry 3]]"
+   }
+
+    puts $outfile {""")}
+    puts $outfile ""
+    puts $outfile "molecule.set_multiplicity($qmMult)"
+    puts $outfile "molecule.set_molecular_charge($qmCharge)"
+    puts $outfile "psi4.optimize(\"HF/6-31G*\", molecule=molecule)"
 
     puts $outfile ""
     close $outfile
 
-    # Write the MP2 Single Point File
+    ### Write the MP2 Single Point File
     # open output file
-    set outfile [open [file join $outFolderPath ${basename}-sp-MP2.gau] w]
+    set outfile [open [file join $outFolderPath ${basename}-sp-MP2.py] w]
 
-    # write the header
-    puts $outfile "%chk=${basename}-sp-MP2.chk"
-    puts $outfile "%nproc=$qmProc"
-    puts $outfile "%mem=${qmMem}GB"
-    puts $outfile "# MP2/6-31G* SCF=Tight Density=Current"
+    puts $outfile "import psi4"
     puts $outfile ""
-    puts $outfile "<qmtool> simtype=\"Single point calculation\" </qmtool>"
-    puts $outfile "${basename}-sp-MP2"
+    puts $outfile "psi4.set_output_file(\"${basename}-sp-MP2.dat\", False)"
+    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
-    puts $outfile "$qmCharge $qmMult"
+    puts $outfile {molecule = psi4.geometry("""}
 
-    # write the cartesian coords
+    # write the coordinates
     foreach atom_entry $atom_info {
-        puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+    puts $outfile "[lindex $atom_entry 0] [format %16.8f [lindex $atom_entry 1]] [format %16.8f [lindex $atom_entry 2]] [format %16.8f [lindex $atom_entry 3]]"
     }
+
+    puts $outfile {""")}
+    puts $outfile ""
+    puts $outfile "molecule.set_multiplicity($qmMult)"
+    puts $outfile "molecule.set_molecular_charge($qmCharge)"
+    puts $outfile "psi4.optimize(\"MP2/6-31G*\", molecule=molecule)"
 
     puts $outfile ""
     close $outfile
 
-    # Write TIP3P Single Point File
-    set outfile [open [file join $outFolderPath wat-sp.gau] w]
-    puts $outfile "%chk=wat-sp.chk"
-    puts $outfile "%nproc=1"
-    puts $outfile "%mem=1GB"
+    ### Write TIP3P Single Point File
+    set outfile [open [file join $outFolderPath wat-sp.py] w]
+    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile "# RHF/6-31G* SCF=Tight"
     puts $outfile ""
-    puts $outfile "wat-sp"
+    puts $outfile "# wat-sp"
     puts $outfile ""
-    puts $outfile "0 1"
-    puts $outfile "O1"
-    puts $outfile "H2 1 0.9572"
-    puts $outfile "H3 1 0.9572 2 104.52"
+    puts $outfile {molecule = psi4.geometry("""}
+    puts $outfile "O"
+    puts $outfile "H 1 0.9572"
+    puts $outfile "H 1 0.9572 2 104.52"
+    puts $outfile {""")}
     puts $outfile ""
+    puts $outfile "molecule.set_multiplicity($qmMult)"
+    puts $outfile "molecule.set_molecular_charge($qmCharge)"
+    puts $outfile "psi4.optimize(\"RHF/6-31G*\", molecule=molecule)"
     close $outfile
 
 }
@@ -909,7 +954,7 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix {} {
     set ::ForceFieldToolKit::GenZMatrix::qmMem 1
     set ::ForceFieldToolKit::GenZMatrix::qmCharge 0
     set ::ForceFieldToolKit::GenZMatrix::qmMult 1
-    set ::ForceFieldToolKit::GenZMatrix::qmRoute "# HF/6-31G* Opt=(Z-matrix,MaxCycles=100) Geom=PrintInputOrient"
+    set ::ForceFieldToolKit::GenZMatrix::qmRoute "HF/6-31G*"
 
 }
 #======================================================
