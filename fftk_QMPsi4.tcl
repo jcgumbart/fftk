@@ -793,10 +793,65 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
     # New QM Output loader
+    set inFile [open $logfile r]
 
-    set molId [mol new]
-    ::QMtool::use_vmd_molecule $molId
-    ::QMtool::read_Psi4_log $logfile $molId
+    ## Create a temporary xyz file from the ORCA input
+    set firstXYZ 1
+    while { ![eof $inFile] } {
+        set inLine [string trim [gets $inFile]]
+        if { [string match {*[sS]tructure*} $inLine] } {
+            # jump to the coordinates
+            gets $inFile
+            gets $inFile
+            # read coordinates
+            set coords {}
+            # get ligand coord
+            while { [regexp {[A-Z]} [set inLine [string trim [gets $inFile]]]] } {
+                lappend coords [lrange $inLine 0 3]
+            }
+            gets $inFile
+            gets $inFile
+            # get water coord
+            while { [regexp {[A-Z]} [set inLine [string trim [gets $inFile]]]] } {
+                lappend coords [lrange $inLine 0 3]
+            }
+            if { $firstXYZ eq 1 } { ;# for the first geom opt iteration, create xyz, fill and load it in VMD
+                set tempFile [open temp.xyz w] ;# create the temp.xyz
+                set numAtoms [llength $coords]
+                puts $tempFile $numAtoms
+                puts $tempFile ""
+                for {set i 0} {$i < $numAtoms} {incr i} {
+                     puts $tempFile [lindex $coords $i]
+                }
+                close $tempFile 
+                set molId [mol new temp.xyz] ;# load the temporary xyz file in VMD
+                set firstXYZ 0
+            } elseif { $firstXYZ eq 0 } { ;# for the following geom opt iterations addfiles
+                # add a new frame, set the coords 
+                mol addfile temp.xyz
+                for {set i 0} {$i < [llength $coords]} {incr i} {
+                    set temp [atomselect $molId "index $i"]
+                    $temp set x [lindex $coords $i 1]
+                    $temp set y [lindex $coords $i 2]
+                    $temp set z [lindex $coords $i 3]
+                    $temp delete
+                }
+            }
+            unset coords 
+        }
+    }
+    file delete temp.xyz ;# remove the temporary xyz file 
+###########################
+# Testing refiting if ORCA
+###########################
+    #set sel2 [atomselect $molId "index < [expr { $numAtoms - 3 }]"]
+    #set all2 [atomselect $molId all]
+    #set newid [mol new $::ForceFieldToolKit::Configuration::geomOptPDB]
+    #set sel1 [atomselect $newid "index < [expr { $numAtoms - 3 }]"]
+    #$all2 move [measure fit $sel2 $sel1]
+    #mol delete $newid
+###########################
+    close $inFile
     return $molId
 }
 
