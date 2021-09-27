@@ -1253,7 +1253,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 #       ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix
 #       ::ForceFieldToolKit::Psi4::resetDefaultsESP
 #       ::ForceFieldToolKit::Psi4::resetDefaultsGenBonded
-#       ::ForceFieldToolKit::Psi4::resetDefaultsGenDihScan
+       ::ForceFieldToolKit::Psi4::resetDefaultsGenDihScan
     }
 
     #---------------------------------------------------#
@@ -4437,7 +4437,11 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
             foreach ele [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv children {}] {
                 lappend ::ForceFieldToolKit::GenDihScan::dihData [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv item $ele -values]
             }
-            ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
+            if {$::ForceFieldToolKit::qmSoft eq "Gaussiain"} {
+              ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
+            } elseif {$::ForceFieldToolKit::qmSoft eq "Psi4"} {
+              ::ForceFieldToolKit::GenDihScan::buildPsi4Files
+            }
             ::ForceFieldToolKit::gui::consoleMessage "QM files written (Scan Torsions)"
         }
     ttk::button $gds.generate.load -text "Load Dihedral Scan Output Files" \
