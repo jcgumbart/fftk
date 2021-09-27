@@ -823,11 +823,11 @@ proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
                 for {set i 0} {$i < $numAtoms} {incr i} {
                      puts $tempFile [lindex $coords $i]
                 }
-                close $tempFile 
+                close $tempFile
                 set molId [mol new temp.xyz] ;# load the temporary xyz file in VMD
                 set firstXYZ 0
             } elseif { $firstXYZ eq 0 } { ;# for the following geom opt iterations addfiles
-                # add a new frame, set the coords 
+                # add a new frame, set the coords
                 mol addfile temp.xyz
                 for {set i 0} {$i < [llength $coords]} {incr i} {
                     set temp [atomselect $molId "index $i"]
@@ -837,10 +837,10 @@ proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
                     $temp delete
                 }
             }
-            unset coords 
+            unset coords
         }
     }
-    file delete temp.xyz ;# remove the temporary xyz file 
+    file delete temp.xyz ;# remove the temporary xyz file
 ###########################
 # Testing refiting if ORCA
 ###########################
@@ -1341,63 +1341,72 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
     }
 
     # cycle through each dihedral to scan
-    set scanCount 1
-    foreach dih $dihData {
-        # change 0-based indices to 1-based
-        set zeroInds [lindex $dih 0]
-        set oneInds {}
-        foreach ind $zeroInds {
-            lappend oneInds [expr {$ind + 1}]
+    foreach sign {1 -1} {
+        set scanCount 1
+        foreach dih $dihData {
+            # change 0-based indices to 1-based
+            set zeroInds [lindex $dih 0]
+            set oneInds {}
+            foreach ind $zeroInds {
+                lappend oneInds [expr {$ind + 1}]
+            }
+
+            # negative scan
+            # open the output file
+            if {$sign == 1} {
+            set outfile [open ${outPath}/${basename}.scan${scanCount}.pos.py w]
+            } elseif {$sign == -1} {
+            set outfile [open ${outPath}/${basename}.scan${scanCount}.neg.py w]
+            }
+
+
+            # write the header
+            puts $outfile "import psi4"
+            puts $outfile "import qcelemental as qcel"
+            puts $outfile "import optking"
+            puts $outfile "psi4.set_memory(\'$qmMem GB\')"
+            puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan.neg.out\', False)"
+            puts $outfile ""
+
+            # write coords
+            puts $outfile {mol = psi4.geometry("""}
+            puts $outfile "$qmCharge $qmMult"
+            foreach atom_entry $atom_info {
+                puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+            }
+            puts $outfile {""")}
+
+            puts $outfile ""
+            puts $outfile "xyzs = mol.geometry().np"
+            puts $outfile "dihedral = qcel.util.measure_coordinates(xyzs, \[[lindex $zeroInds 0], [lindex $zeroInds 1], [lindex $zeroInds 2], [lindex $zeroInds 3]\], True)"
+
+            puts $outfile ""
+            puts $outfile "scan = \[\]"
+
+            puts $outfile ""
+            set stepsize [lindex $dih 2]
+            set step [expr int([expr [lindex $dih 1]/$stepsize/2]) + 1]
+            puts $outfile "for i in range(0, $step):"
+            puts $outfile "    fixD = {\"ranged_dihedral\": \"($oneInds \" + str(dihedral) + \" \" + str(dihedral) + \")\"}"
+            puts $outfile "    options = {"
+            puts $outfile {        'basis': '6-31g*',}
+            puts $outfile {        'mp2_type': 'df',}
+            puts $outfile {        'geom_maxiter': 100,}
+            puts $outfile {        'dynamic_level': 1,}
+            puts $outfile "        }"
+            puts $outfile "    psi4.set_options(options)"
+            puts $outfile {    json_output = optking.optimize_psi4("mp2", **fixD)}
+            puts $outfile {    E = json_output["energies"][-1]}
+            puts $outfile "    scan.append((dihedral, E))"
+            puts $outfile "    dihedral += [expr $stepsize*$sign]"
+            puts $outfile ""
+            puts $outfile "print(scan)"
+
+        close $outfile
+
+        incr scanCount
+
         }
-
-        # negative scan
-        # open the output file
-        set outfile [open ${outPath}/${basename}.scan${scanCount}.neg.gau w]
-
-        # write the header
-        puts $outfile "%chk=${basename}.scan${scanCount}.neg.chk"
-        puts $outfile "%nproc=$qmProc"
-        puts $outfile "%mem=${qmMem}GB"
-        puts $outfile "$qmRoute"
-        puts $outfile ""
-        puts $outfile "$basename Dihedral/Improper Scan"
-        puts $outfile ""
-        puts $outfile "$qmCharge $qmMult"
-        # write coords
-       foreach atom_entry $atom_info {
-           puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
-       }
-       # write scan
-       puts $outfile ""
-       puts $outfile "D $oneInds S [expr int([expr [lindex $dih 1]/[lindex $dih 2]])] [format "%.6f" [expr {-1*[lindex $dih 2]}]]"
-
-       close $outfile
-
-       # positive scan
-       # open the output file
-       set outfile [open ${outPath}/${basename}.scan${scanCount}.pos.gau w]
-
-       # write the header
-       puts $outfile "%chk=${basename}.scan${scanCount}.pos.chk"
-       puts $outfile "%nproc=$qmProc"
-       puts $outfile "%mem=${qmMem}GB"
-       puts $outfile "$qmRoute"
-       puts $outfile ""
-       puts $outfile "$basename Dihedral/Improper Scan"
-       puts $outfile ""
-       puts $outfile "$qmCharge $qmMult"
-       # write coords
-      foreach atom_entry $atom_info {
-          puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
-      }
-      # write scan
-      puts $outfile ""
-      puts $outfile "D $oneInds S [expr int([expr [lindex $dih 1]/[lindex $dih 2]])] [format "%.6f" [lindex $dih 2]]"
-
-      close $outfile
-
-      incr scanCount
-
     }
 
 }
@@ -1577,7 +1586,7 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsGenDihScan {} {
     set ::ForceFieldToolKit::GenDihScan::qmCharge 0
     set ::ForceFieldToolKit::GenDihScan::qmMem 1
     set ::ForceFieldToolKit::GenDihScan::qmMult 1
-    set ::ForceFieldToolKit::GenDihScan::qmRoute "\# opt=modredundant MP2/6-31g(d) Geom=PrintInputOrient"
+    set ::ForceFieldToolKit::GenDihScan::qmRoute {mp2 6-31g*}
 
 }
 #===========================================================================================================
