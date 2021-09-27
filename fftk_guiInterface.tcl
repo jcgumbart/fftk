@@ -4437,7 +4437,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
             foreach ele [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv children {}] {
                 lappend ::ForceFieldToolKit::GenDihScan::dihData [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv item $ele -values]
             }
-            if {$::ForceFieldToolKit::qmSoft eq "Gaussiain"} {
+            if {$::ForceFieldToolKit::qmSoft eq "Gaussian"} {
               ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
             } elseif {$::ForceFieldToolKit::qmSoft eq "Psi4"} {
               ::ForceFieldToolKit::GenDihScan::buildPsi4Files
@@ -4465,12 +4465,12 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
                 return
             } else {
                 set scanData [::ForceFieldToolKit::DihOpt::parseGlog $glogs]
-		# Continue only if scanData contains some information, namely if there was no error during the parseGlog procedure
+		            # Continue only if scanData contains some information, namely if there was no error during the parseGlog procedure
                 if { $scanData ne "" } {::ForceFieldToolKit::DihOpt::vmdLoadQMData $::ForceFieldToolKit::Configuration::chargeOptPSF $::ForceFieldToolKit::Configuration::geomOptPDB $scanData
                 unset scanData
                 unset glogs
                 ::ForceFieldToolKit::gui::consoleMessage "QM output file(s) loaded (Scan Torsions)"
-		}
+		              }
             }
         }
 
