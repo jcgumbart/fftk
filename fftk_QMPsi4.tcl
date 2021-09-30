@@ -42,6 +42,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
     puts $outfile "import psi4"
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"output.dat\", False)"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
@@ -185,6 +186,7 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
     puts $outfile "import psi4"
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}\", False)"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile "psi4.set_options({\"opt_coordinates\": \"cartesian\"})"
     puts $outfile ""
@@ -221,6 +223,7 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
     puts $outfile "import psi4"
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}\", False)"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile "psi4.set_options({\"opt_coordinates\": \"cartesian\"})"
     puts $outfile ""
@@ -719,6 +722,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile "import psi4"
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"${basename}-sp-HF.dat\", False)"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
@@ -744,6 +748,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile "import psi4"
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"${basename}-sp-MP2.dat\", False)"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
@@ -764,6 +769,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
 
     ### Write TIP3P Single Point File
     set outfile [open [file join $outFolderPath wat-sp.py] w]
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile "# RHF/6-31G* SCF=Tight"
     puts $outfile ""
@@ -1364,6 +1370,7 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile "import psi4"
             puts $outfile "import qcelemental as qcel"
             puts $outfile "import optking"
+            puts $outfile "psi4.set_num_threads($qmProc)"
             puts $outfile "psi4.set_memory(\'$qmMem GB\')"
             puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan.neg.out\', False)"
             puts $outfile ""
