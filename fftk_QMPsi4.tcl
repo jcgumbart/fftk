@@ -790,10 +790,40 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
     # New QM Input loader
+    set inFile [open $comfile r]
+    set tmpFile [open "$comfile-tmp" w]
 
-    set molId [mol new]
-    ::QMtool::use_vmd_molecule $molId
-    ::QMtool::read_Psi4_input $comfile $molId
+    set read_coords 0
+    while { ![eof $inFile] } {
+        set inLine [string trim [gets $inFile]]
+
+        if { [string match {*psi4.geometry*} $inLine]} {
+            set read_coords 1
+            continue
+        }
+
+        if {$read_coords} {
+            if { [string match {""")} $inLine] } {
+                break
+            }
+            if {[llength $inLine] >= 4
+                && [string is alpha [string index [lindex $inLine 0] 0] ]
+                && [string is double [lindex $inLine 1]]} {
+                set inLine [regsub "rAH" $inLine "2.0"]
+                set inLine [regsub "dih" $inLine "0.0"]
+                puts $tmpFile $inLine
+            }
+        }
+    }
+
+    close $inFile
+    close $tmpFile
+
+    ::QMtool::read_zmtfile "$comfile-tmp"
+    file delete "$comfile-tmp"
+
+    set molId [molinfo top]
+
     return $molId
 }
 #===========================================================================================================
@@ -805,19 +835,14 @@ proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
     set firstXYZ 1
     while { ![eof $inFile] } {
         set inLine [string trim [gets $inFile]]
-        if { [string match {*[sS]tructure*} $inLine] } {
+        if { [string match {*RHF Reference*} $inLine] } {
             # jump to the coordinates
-            gets $inFile
-            gets $inFile
+            for {set i 0} {$i < 13} {incr i} {
+                gets $inFile
+            }
             # read coordinates
             set coords {}
             # get ligand coord
-            while { [regexp {[A-Z]} [set inLine [string trim [gets $inFile]]]] } {
-                lappend coords [lrange $inLine 0 3]
-            }
-            gets $inFile
-            gets $inFile
-            # get water coord
             while { [regexp {[A-Z]} [set inLine [string trim [gets $inFile]]]] } {
                 lappend coords [lrange $inLine 0 3]
             }
