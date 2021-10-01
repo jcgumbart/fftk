@@ -1351,7 +1351,7 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
                 lappend oneInds [expr {$ind + 1}]
             }
 
-            # negative scan
+            # negative/positive scan
             # open the output file
             if {$sign == 1} {
             set outfile [open ${outPath}/${basename}.scan${scanCount}.pos.py w]
@@ -1359,13 +1359,16 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             set outfile [open ${outPath}/${basename}.scan${scanCount}.neg.py w]
             }
 
-
             # write the header
             puts $outfile "import psi4"
             puts $outfile "import qcelemental as qcel"
             puts $outfile "import optking"
             puts $outfile "psi4.set_memory(\'$qmMem GB\')"
-            puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan.neg.out\', False)"
+            if {$sign == 1} {
+            puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan${scanCount}.pos.out\', False)"
+            } elseif {$sign == -1} {
+            puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan${scanCount}.neg.out\', False)"
+            }
             puts $outfile ""
 
             # write coords
@@ -1483,7 +1486,7 @@ proc ::ForceFieldToolKit::Psi4::parseGlog_DihOpt { debug debugLog GlogFile } {
     # variable debugLog
 
     # initialize log-wide variables
-    set currDihDef {}; set currDihVal {}; set currCoords {}; set currEnergy {}
+    set currDihVal {}; set currCoords {}; set currEnergy {}
     set infile [open $GlogFile r]
     set GlogData {}
 
@@ -1550,6 +1553,7 @@ proc ::ForceFieldToolKit::Psi4::parseGlog_DihOpt { debug debugLog GlogFile } {
                 }
                 # parse out the current dihedral value; round to integer
                 set currDihVal [expr { round([lindex $inline 3]) }]
+
                 # add the collected information to the master list
                 # lappend GlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
                 lappend tempGlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
