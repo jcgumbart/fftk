@@ -1531,8 +1531,12 @@ proc ::ForceFieldToolKit::Psi4::readLog_TorExplor { log } {
 proc ::ForceFieldToolKit::Psi4::parseGlog_DihOpt { debug debugLog GlogFile } {
 
     # initialize log-wide variables
+<<<<<<< HEAD
     set scanDihInds {}; set currDihVal {}; set currCoords {}; set currEnergy {}
     set tmpGlogData {}; GlogData {}
+=======
+    set currDihVal {}; set currCoords {}; set currEnergy {}
+>>>>>>> 856f8f23e4b3d9d74b0f7f54dcfc2b79946f8ee8
     set infile [open $GlogFile r]
 
     # read through the Psi4 output File (Glog)
@@ -1555,10 +1559,23 @@ proc ::ForceFieldToolKit::Psi4::parseGlog_DihOpt { debug debugLog GlogFile } {
                 while { [set inline [gets $infile]] ne "end energy" } {
                     lappend currEnergy $inline
                 }
+<<<<<<< HEAD
             }
             {coordinates} {
                 while { [set inline [gets $infile]] ne "end coordinates" } {
                     lappend currCoords [list $inline]
+=======
+                # parse out the current dihedral value; round to integer
+                set currDihVal [expr { round([lindex $inline 3]) }]
+
+                # add the collected information to the master list
+                # lappend GlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
+                lappend tempGlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
+
+                if { $debug } {
+                    puts $debugLog "$scanDihInds\t$currDihVal\t$currEnergy"
+                    flush $debugLog
+>>>>>>> 856f8f23e4b3d9d74b0f7f54dcfc2b79946f8ee8
                 }
             }
         }; # end of line parse (switch)
