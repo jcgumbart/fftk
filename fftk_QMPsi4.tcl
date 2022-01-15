@@ -41,7 +41,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
     # start python code
     puts $outfile "import psi4"
     puts $outfile ""
-    puts $outfile "psi4.set_output_file(\"output.dat\", False)"
+    puts $outfile "psi4.set_output_file(\"output.out\", False)"
     puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
@@ -179,34 +179,43 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
 		set donorName [[atomselect top "index $donorAtom"] get name]
 
 		# open output file
-    set outname [file join $outFolderPath ${basename}-DON-${donorName}.py]
-    set outfile [open $outname w]
+        set outname [file join $outFolderPath ${basename}-DON-${donorName}.py]
+        set outfile [open $outname w]
 
-    # start python code
-    puts $outfile "import psi4"
-    puts $outfile ""
-    puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}\", False)"
-    puts $outfile "psi4.set_num_threads($qmProc)"
-    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
-    puts $outfile "psi4.set_options({\"opt_coordinates\": \"cartesian\"})"
-    puts $outfile ""
-    puts $outfile {molecule = psi4.geometry("""}
+        # start python code
+        puts $outfile "import psi4"
+        puts $outfile "import optking"
+        puts $outfile "import qcelemental as qcel"
+        puts $outfile "import numpy as np"
+        puts $outfile ""
+        puts $outfile {# Summary: optimizes intermolecular coordinates between two frozen monomers.}
+        puts $outfile {# Split dimers in input with "--"}
+        puts $outfile ""
+        puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}.out\", False)"
+        puts $outfile {molecule = psi4.geometry("""}
 
 		# write the cartesian coords for the molecule
 		foreach atom_entry $atom_info {
 		    puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
 		}
 
-		# build / write the zmatrix
-		::ForceFieldToolKit::Psi4::writeZmat $donorAtom donor $Gnames $outfile $len_mol
+        puts $outfile "--"
 
-    puts $outfile {""")}
-    puts $outfile ""
-    puts $outfile "molecule.set_multiplicity($qmMult)"
-    puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize(\"$qmRoute\", molecule=molecule)"
+	    # build / write the zmatrix
+        set ref_label [list A1 A2 A3 B1 B2 B3]
+        set ref_val [::ForceFieldToolKit::Psi4::writeZmat $donorAtom donor $Gnames $outfile $len_mol]
+        for {set i 0} {$i < 6} {incr i} {
+            set [lindex $ref_label $i] [lindex $ref_val $i]
+        }
 
-    close $outfile
+        puts $outfile "nocom"
+        puts $outfile "unit angstrom"
+        puts $outfile {""")}
+        puts $outfile ""
+
+        ::ForceFieldToolKit::Psi4::write_optZmat $qmMem $qmMult $qmCharge $qmRoute $len_mol $outfile $A1 $A2 $A3 $B1 $B2 $B3
+
+        close $outfile
     }; # end DONORS
 
     #===========#
@@ -219,31 +228,40 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
 		set outname [file join $outFolderPath ${basename}-ACC-${acceptorName}.py]
 		set outfile [open $outname w]
 
-    # start python code
-    puts $outfile "import psi4"
-    puts $outfile ""
-    puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}\", False)"
-    puts $outfile "psi4.set_num_threads($qmProc)"
-    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
-    puts $outfile "psi4.set_options({\"opt_coordinates\": \"cartesian\"})"
-    puts $outfile ""
-    puts $outfile {molecule = psi4.geometry("""}
+        # start python code
+        puts $outfile "import psi4"
+        puts $outfile "import optking"
+        puts $outfile "import qcelemental as qcel"
+        puts $outfile "import numpy as np"
+        puts $outfile ""
+        puts $outfile {# Summary: optimizes intermolecular coordinates between two frozen monomers.}
+        puts $outfile {# Split dimers in input with "--"}
+        puts $outfile ""
+        puts $outfile "psi4.set_output_file(\"${basename}-ACC-${acceptorName}.out\", False)"
+        puts $outfile "molecule = psi4.geometry(\"\"\""
 
 		# write the cartesian coords for the molecule
 		foreach atom_entry $atom_info {
 		    puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
 		}
 
+        puts $outfile "--"
+
 		# build / write the zmatrix
-		::ForceFieldToolKit::Psi4::writeZmat $acceptorAtom acceptor $Gnames $outfile $len_mol
+        set ref_label [list A1 A2 A3 B1 B2 B3]
+        set ref_val [::ForceFieldToolKit::Psi4::writeZmat $acceptorAtom acceptor $Gnames $outfile $len_mol]
+        for {set i 0} {$i < 6} {incr i} {
+            set [lindex $ref_label $i] [lindex $ref_val $i]
+        }
 
-    puts $outfile {""")}
-    puts $outfile ""
-    puts $outfile "molecule.set_multiplicity($qmMult)"
-    puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize(\"$qmRoute\", molecule=molecule)"
+        puts $outfile "nocom"
+        puts $outfile "unit angstrom"
+        puts $outfile {""")}
+        puts $outfile ""
 
-    close $outfile
+        ::ForceFieldToolKit::Psi4::write_optZmat $qmMem $qmMult $qmCharge $qmRoute $len_mol $outfile $A1 $A2 $A3 $B1 $B2 $B3
+
+        close $outfile
 
 		# CARBONYL AND HALOGEN EXCEPTIONS
 		# there is a special exception for X=O cases (e.g. C=O, P=O, S=O)
@@ -268,6 +286,9 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 	# make a selection for atom A (the interaction site), and find all attached atoms
 	set aSel [atomselect top "index $aInd"]
 	set bondlistA [lindex [$aSel getbonds] 0]
+  # puts $aInd
+  # puts $aSel
+  # puts $bondlistA
 
 	# z-matrix will be different for n=1 and n>1 (each will have their own special cases as well)
 	if { [llength $bondlistA] == 1} {
@@ -284,6 +305,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 		if { [molinfo top get numatoms] == 2} { set diatomic 1 }
 		# check if C--B--A is linear
 		if { !$diatomic } {
+			set bInd [lindex $bondlistA 0]
 			set bSel [atomselect top "index $bondlistA"]
 			set bondlistB [lindex [$bSel getbonds] 0]
 			foreach ele $bondlistB {
@@ -292,6 +314,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				# check for a non-linear angle (+/- 2 degrees)
 				if { [expr {abs([measure angle [list $aInd $bondlistA $ele]])}] <= 178.0 } {
 					# found a non-linear C atom; unset the flag and stop looking
+					set cInd $ele
 					set linear 0; break
 				} else {
 					# keep looking
@@ -302,7 +325,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			$bSel delete
 		}
 
-    # define x and Ow as the indices (start from 1) of the ghost atom and O, respectively
+    # define x and Ow as the indices (start from 1) of the dummy atom and O, respectively
     set x [expr $len_mol + 1]
     set Ow [expr $len_mol + 2]
 
@@ -310,8 +333,9 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			# if either diatomic or linear, build a zmatrix for a 1D scan
 
 			# get the relevant gnames
-			set aGname [rxpr $aInd + 1]
+			set aGname [expr $aInd + 1]
 			set bGname [expr $bondlistA + 1]
+			set cGanme [expr $cInd + 1]   # added
 
 			# for non-diatomic linear cases, we will define x in cartesian coords
 			if { $linear } {
@@ -355,9 +379,11 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			# clean up and return
 			$aSel delete
 			if { $linear } { $bSel delete }
-			return
-			# done with special n=1 cases (diatomic or linear)
+      # assign reference atoms for diatomic/linear N = 1 case
+      lassign "$aGname $bGname $cGname" A1 A2 A3
+      lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 
+			# done with special n=1 cases (diatomic or linear)
 		} else {
 			# handle the n=1 case 'normally'
 
@@ -386,6 +412,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			set aGname [expr $aInd + 1]
 			set bGname [expr $bInd + 1]
 			set cGname [expr $cInd + 1]
+      # puts "aGname $aGname bGname $bGname cGname $cGname"
 
 			if { $class eq "donor" } {
 				# donor
@@ -395,6 +422,10 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
 				puts $outfile "rAH = 2.0"
 				puts $outfile "dih = 0.0"
+
+        # assign reference atoms for "normal" N = 1 case donor
+        lassign "$aGname $bGname $cGname" A1 A2 A3
+        lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 			} else {
 				# acceptor
 				# call helper function to find probe position
@@ -404,7 +435,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				set mAng [::QMtool::bond_angle $probePos [measure center $aSel] [measure center $cSel]]
 				set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $cSel] [measure center $bSel]]
 
-        # need to redefine x and Ow because the ghost atom X is at index $len_mol + 2
+        # need to redefine x and Ow because the dummy atom X is at index $len_mol + 2
         # and Ow is at index $len_mol + 3 instead
         # In addition, define H1w as the index of H1w
         set x [expr {$len_mol + 2}]
@@ -417,11 +448,14 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9527 $H1w 104.52 $x dih]
 				puts $outfile "rAH = 2.0"
 				puts $outfile "dih = 0.0"
+
+        # assign reference atoms for "normal" N = 1 case aceptor
+        lassign "$aGname $bGname $cGname" A1 A2 A3
+        lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 			}
 
 			# clean up and return
 			$aSel delete; $bSel delete; $cSel delete
-			return
 		}; # end of 'normal' N=1
 
 	} else {
@@ -483,7 +517,6 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9572 $aGname 127.74 $x 180.00]
             puts $outfile "rAH = 2.0"
             puts $outfile "dih = 0.0"
-
 		} else {
 			# acceptor
 			puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
@@ -496,8 +529,79 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 
 		# clean up atomselections and return
 		$aSel delete; $bSel delete; $cSel delete
-		return
+
+    # assign the reference atoms for N > 1 case
+    lassign "$aGname $bGname $cGname" A1 A2 A3
+    lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 	}
+  # return the reference atoms
+  # A1, A2, A3 and B1, B2, B3 are defined in
+  # https://github.com/zachglick/fftk-psi4-translation/blob/main/psi4/charge-opt-water/PRLD-DON-H1.py
+  return [list $A1 $A2 $A3 $B1 $B2 $B3]
+}
+#===========================================================================================================
+proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len_mol outfile A1 A2 A3 B1 B2 B3} {
+
+  # follow https://github.com/zachglick/fftk-psi4-translation/blob/main/psi4/charge-opt-water
+  puts $outfile {# Ordering of reference atoms is essential for properly defining contraints.}
+  puts $outfile {# Note that if either of the theta angles are linear. optking will crash.}
+  puts $outfile {# Keep to the ordering below and everything should be fine :)}
+  puts $outfile {#  A1: Ligand donor/acceptor atom}
+  puts $outfile {#  A2: Ligand atom in-plane with dih (NOT in-line with H-bond)}
+  puts $outfile {#  A3: Ligand atom}
+  puts $outfile {#  B1: Water donor/acceptor atom}
+  puts $outfile {#  B2: Water atom in-plane with dih (NOT in-line with H-bond)}
+  puts $outfile {#  B3: Final water atom}
+  puts $outfile ""
+
+  puts $outfile {# Here are the dimer coordinates that are used with their definitions.}
+  puts $outfile {#  R         : Distance A1 to B1 (rAH)}
+  puts $outfile {#  theta_A   : Angle,          A2-A1-B1}
+  puts $outfile {#  theta_B   : Angle,          A1-B1-B2}
+  puts $outfile {#  tau       : Dihedral angle, A2-A1-B1-B2 (dih)}
+  puts $outfile {#  phi_A     : Dihedral angle, A3-A2-A1-B1}
+  puts $outfile {#  phi_B     : Dihedral angle, A1-B1-B2-B3}
+  puts $outfile ""
+
+  puts $outfile {# Coords are 1-indexed without dummies here}
+  puts $outfile "dimer = {"
+  puts $outfile "    \"Natoms per frag\": \[$len_mol, 3\],"
+  puts $outfile {    "A Frag": 1,}
+  puts $outfile "    \"A Ref Atoms\": \[\[$A1\], \[$A2\], \[$A3\]\],"
+  puts $outfile {    "A Label": "PRLD",}
+  puts $outfile {    "B Frag": 2,}
+  puts $outfile "    \"B Ref Atoms\": \[\[$B1\], \[$B2\], \[$B3\]\],"
+  puts $outfile {    "B Label": "Water",}
+  puts $outfile {    "Frozen": ["theta_A", "theta_B", "phi_A", "phi_B"],}
+  puts $outfile "}"
+  puts $outfile ""
+
+  puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+  puts $outfile "molecule.set_multiplicity($qmMult)"
+  puts $outfile "molecule.set_molecular_charge($qmCharge)"
+  puts $outfile {psi4.core.clean_options()}
+  puts $outfile "psi4_options = {"
+  puts $outfile {    "basis": "6-31G*",}
+  puts $outfile {    "d_convergence": 9,}
+  puts $outfile {    "frag_mode": "multi",}
+  puts $outfile {    "freeze_intrafrag": 'true',}
+  puts $outfile "}"
+  puts $outfile {psi4.set_options(psi4_options)}
+  puts $outfile "result = optking.optimize_psi4(\"$qmRoute\", **{\"interfrag_coords\": str(dimer)})"
+  puts $outfile ""
+
+  puts $outfile {# Can use qcel to output final rAH and dih values}
+  puts $outfile {xyzs = result["final_molecule"]["geometry"]}
+  puts $outfile {xyzs = np.array(xyzs)}
+  puts $outfile {xyzs = np.reshape(xyzs, (-1,3))}
+  puts $outfile {# coords are zero-indexed here:}
+  puts $outfile "rAH = qcel.util.measure_coordinates(xyzs, $A1, $B1, True) # in bohr"
+  puts $outfile "# dih = qcel.util.measure_coordinates(xyzs, \[...\], True) # in degrees   # dih does not exist in every case"
+  puts $outfile ""
+
+  puts $outfile {bohr_to_ang = qcel.constants.conversion_factor("bohr", "angstrom")}
+  puts $outfile {print(rAH * bohr_to_ang)}
+  puts $outfile {print(dih)}
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::placeProbe { aSel } {
@@ -721,8 +825,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     # start python code
     puts $outfile "import psi4"
     puts $outfile ""
-    puts $outfile "psi4.set_output_file(\"${basename}-sp-HF.dat\", False)"
-    puts $outfile "psi4.set_num_threads($qmProc)"
+    puts $outfile "psi4.set_output_file(\"${basename}-sp-HF.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
@@ -747,8 +850,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
 
     puts $outfile "import psi4"
     puts $outfile ""
-    puts $outfile "psi4.set_output_file(\"${basename}-sp-MP2.dat\", False)"
-    puts $outfile "psi4.set_num_threads($qmProc)"
+    puts $outfile "psi4.set_output_file(\"${basename}-sp-MP2.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
@@ -769,7 +871,8 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
 
     ### Write TIP3P Single Point File
     set outfile [open [file join $outFolderPath wat-sp.py] w]
-    puts $outfile "psi4.set_num_threads($qmProc)"
+    puts $outfile "import psi4"
+    puts $outfile ""
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile "# RHF/6-31G* SCF=Tight"
     puts $outfile ""
@@ -789,49 +892,44 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
-    # New QM Input loader
-    set inFile [open $comfile r]
-    set tmpFile [open "$comfile-tmp" w]
+  # New QM Input loader
+  set inFile [open $comfile r]
+  set tmpFile [open "$comfile-tmp" w]
 
-    set read_coords 0
-    while { ![eof $inFile] } {
-        set inLine [string trim [gets $inFile]]
+  set read_coords 0
+  while { ![eof $inFile] } {
+      set inLine [string trim [gets $inFile]]
 
-        if { [string match {*psi4.geometry*} $inLine]} {
-            set read_coords 1
-            continue
-        }
+      if { [string match {*psi4.geometry*} $inLine] } {
+          set read_coords 1
+          continue
+      }
 
-        if {$read_coords} {
-            if { [string match {""")} $inLine] } {
-                break
-            }
-            if {[llength $inLine] >= 4
-                && [string is alpha [string index [lindex $inLine 0] 0] ]
-                && [string is double [lindex $inLine 1]]} {
-                set inLine [regsub "rAH" $inLine "2.0"]
-                set inLine [regsub "dih" $inLine "0.0"]
-                puts $tmpFile $inLine
-            }
-        }
-    }
-
-    close $inFile
-    close $tmpFile
-
-    ::QMtool::read_zmtfile "$comfile-tmp"
-    file delete "$comfile-tmp"
-
-    set molId [molinfo top]
-
-    return $molId
+      if {$read_coords} {
+          if { [string match {""")} $inLine] } {
+              break
+          }
+          if {[llength $inLine] >= 4
+              && [string is alpha [string index [lindex $inLine 0] 0] ]
+              && [string is double [lindex $inLine 1]]} {
+              set inLine [regsub "rAH" $inLine "2.0"]
+              set inLine [regsub "dih" $inLine "0.0"]
+              puts $tmpFile $inLine
+          }
+      }
+  }
+  close $inFile
+  close $tmpFile
+  ::QMtool::read_zmtfile "$comfile-tmp"
+  file delete "$comfile-tmp"
+  set molId [molinfo top]
+  return $molId
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
     # New QM Output loader
     set inFile [open $logfile r]
-
-    ## Create a temporary xyz file from the ORCA input
+    # Create a temporary xyz file
     set firstXYZ 1
     while { ![eof $inFile] } {
         set inLine [string trim [gets $inFile]]
@@ -857,7 +955,7 @@ proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
                 close $tempFile
                 set molId [mol new temp.xyz] ;# load the temporary xyz file in VMD
                 set firstXYZ 0
-            } elseif { $firstXYZ eq 0 } { ;# for the following geom opt iterations addfiles
+            } elseif { $firstXYZ eq 0 } { ;# for the following opt iterations addfiles
                 # add a new frame, set the coords
                 mol addfile temp.xyz
                 for {set i 0} {$i < [llength $coords]} {incr i} {
@@ -872,16 +970,7 @@ proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
         }
     }
     file delete temp.xyz ;# remove the temporary xyz file
-###########################
-# Testing refiting if ORCA
-###########################
-    #set sel2 [atomselect $molId "index < [expr { $numAtoms - 3 }]"]
-    #set all2 [atomselect $molId all]
-    #set newid [mol new $::ForceFieldToolKit::Configuration::geomOptPDB]
-    #set sel1 [atomselect $newid "index < [expr { $numAtoms - 3 }]"]
-    #$all2 move [measure fit $sel2 $sel1]
-    #mol delete $newid
-###########################
+
     close $inFile
     return $molId
 }
@@ -889,7 +978,7 @@ proc ::ForceFieldToolKit::Psi4::loadLOGFile { logfile } {
 #===========================================================================================================
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::getscf_ChargeOpt { file simtype } {
-    # Get SCF energies from Psi4 Output o
+   # Get SCF energies from Psi4 Output
    set scfenergies {}
 
    set fid [open $file r]
@@ -904,42 +993,17 @@ proc ::ForceFieldToolKit::Psi4::getscf_ChargeOpt { file simtype } {
    set scanpoint 0
 
    while {![eof $fid]} {
-      set line [string trim [gets $fid]]
+     set line [string trim [gets $fid]]
 
-      # Stop reading on errors
-      if {[string match "Error termination*" $line]} { puts $line; return $scfenergies }
-
-      # We only read Link0
-      if {[string match "Normal termination of Psi4*" $line]} { variable normalterm 1; break }
-
-      if {$simtype=="Relaxed potential scan"} {
-         if {[string match "Step number * out of a maximum of * on scan point * out of *" $line]} {
-            set optstep   [lindex $line 2]
-            set scanpoint [lindex $line 12]
-            set scansteps [lindex $line 15]
-#            puts "SCAN: optstep $optstep on scan point $scanpoint out of $scansteps"
-         }
-      }
-
-     if {[string match "SCF Done:*" $line] || [string match "Energy=* NIter=*" $line]} {
-         if {[string match "SCF Done:*" $line]} {
-            set scf [lindex $line 4]
-         } else {
-            set scf [lindex $line 1]
-         }
+     if {[string match "Total Energy =" $line]} {
+         set scf [lindex $line 2]
          set scfkcal [expr {$scf*$hart_kcal*$mol}]
          if {$num==0} { set ori $scf }
          set scfkcalori [expr {($scf-$ori)*$hart_kcal*$mol}]
-         # In case of a relaxed potential scan we replace the previous energy of the same scanstep,
-         # otherwise we just append all new scf energies
-         if {$optstep==1 || !($simtype=="Relaxed potential scan")} {
-            if {[llength $tmpscf]} { lappend scfenergies $tmpscf; set tmpscf {} }
-#            puts [format "%i: SCF = %f hart = %f kcal/mol; rel = %10.4f kcal/mol" $num $scf $scfkcal $scfkcalori]
-         }
          set tmpscf [list $num $scfkcal]
 
          incr num
-      }
+     }
 
    }
    close $fid
@@ -951,31 +1015,54 @@ proc ::ForceFieldToolKit::Psi4::getscf_ChargeOpt { file simtype } {
 proc ::ForceFieldToolKit::Psi4::getMolCoords_ChargeOpt { file numMolAtoms } {
 
    set fid [open $file r]
-   ::QMtool::init_variables ::QMtool
+   while { ![eof $fid] } {
+      set inLine [string trim [gets $fid]]
+      set coordlist {}   # define inside the while loop so they can be overwirtten until the last optimization
+      if { $inLine eq "==> Geometry <==" } {
+         # jump to coordinates
+         for {set i 0} {$i < 8} {incr i} {  # burn-in the header
+             gets $inFile
+         }
+         # read coordinates
+         while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
+            lappend coordlist [lrange $inLine 1 3]
+         }
+      } else {
+          continue
+      }
+  }
 
-   ::QMtool::read_Psi4_cartesians $fid qmtooltemppdb.pdb last
-   file delete qmtooltemppdb.pdb
-   set coordlist [lindex [::QMtool::get_cartesian_coordinates] 0]
+  close $fid
 
-   close $fid
+  return [lrange $coordlist 0 [expr $numMolAtoms - 1]]
 
-   return [lrange $coordlist 0 [expr $numMolAtoms - 1]]
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::getWatCoords_ChargeOpt { file } {
 
    set fid [open $file r]
-   ::QMtool::init_variables ::QMtool
-
-   ::QMtool::read_Psi4_cartesians $fid qmtooltemppdb.pdb last
-   file delete qmtooltemppdb.pdb
-   set coordlist [lindex [::QMtool::get_cartesian_coordinates] 0]
-   set atomlist [::QMtool::get_atomproplist]
-   set numAtoms [llength $atomlist]
-
-   set Hcount 0
-   for {set i [expr $numAtoms - 4]} {$i < $numAtoms} {incr i} {
-      set name [lindex [lindex $atomlist $i] 1]
+   while { ![eof $fid] } {
+      set inLine [string trim [gets $fid]]
+      set coordlist {}   # define inside the while loop so they can be overwirtten until the last optimization
+      set atomnames {}
+      if { $inLine eq "==> Geometry <==" } {
+         # jump to coordinates
+         for {set i 0} {$i < 8} {incr i} {  # burn-in the header
+             gets $inFile
+         }
+         # read coordinates
+         while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
+            lappend atomnames [lindex $inLine 0]
+            lappend coordlist [lrange $inLine 1 3]
+         }
+      } else {
+          continue
+      }
+  }
+  set numAtoms [llength $atomnames]
+  set Hcount 0
+  for {set i [expr $numAtoms - 3]} {$i < $numAtoms} {incr i} {
+      set name [lindex $atomnames $i]
       if { [string match "O*" $name] } {
          set Ocoord [lindex $coordlist $i]
       } elseif { [string match "H*" $name] && $Hcount == 1} {
@@ -985,50 +1072,48 @@ proc ::ForceFieldToolKit::Psi4::getWatCoords_ChargeOpt { file } {
          set H1coord [lindex $coordlist $i]
          set Hcount 1
       }
-   }
+  }
 
-   close $fid
+  close $fid
 
-   set coords [list $Ocoord $H1coord $H2coord]
-   return $coords
-
+  set coords [list $Ocoord $H1coord $H2coord]
+  return $coords
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::getDipoleData_ChargeOpt { filename } {
 
-    # initialize some variables
-    set coords {}
-    set qmVec {}
-    set qmMag {}
+   set fid [open $file r]
+   while { ![eof $fid] } {
+      set inLine [string trim [gets $fid]]
+     
+      # define inside the while loop so they can be overwirtten until the last optimization
+      set coor {}
+      set qmVec {}
+      set qmMag {}
+     
+      if { $inLine eq "==> Geometry <==" } {
+         # jump to coordinates
+         for {set i 0} {$i < 8} {incr i} {  # burn-in the header
+             gets $inFile
+         }
+         # read coordinates
+         while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
+            lappend coor [lrange $inLine 1 3]
+         }
+       } elseif { $inLine eq "Dipole Moment: [D]" } {
+           set inLine [string trim [gets $inFile]]
+           set qmVec [list [lindex $inLine 1] [lindex $inLine 3] [lindex $inLine 5]]
+           set qmMag [lindex $inLine 7]
+       } else {
+           continue
+       }
+   }
 
-    # open the file for reading
-    set inFile [open $filename r]
-
-    # parse the output file
-    # burn lines until we find the std orientation
-    while { [set inLine [string trim [gets $inFile]]] ne "Standard orientation:" } { continue }
-
-    # once std orientation is found, burn header (4 lines)
-    for {set i 0} {$i < 4} {incr i} { gets $inFile }
-
-    # read in the coords
-    while { ![regexp {^-*$} [set inLine [string trim [gets $inFile]]]] } {
-        lappend coords [lrange $inLine 3 5]
-    }
-
-    # burn until find the dipole moment
-    while { [set inLine [string trim [gets $inFile]]] ne "Dipole moment (field-independent basis, Debye):"} { continue }
-
-    # parse the dipole moment
-    set inLine [string trim [gets $inFile]]
-    set qmVec [list [lindex $inLine 1] [lindex $inLine 3] [lindex $inLine 5]]
-    set qmMag [lindex $inLine 7]
-
-    # we're done with the output file
-    unset inLine
-    close $inFile
-
-    return [list $coords $qmVec $qmMag]
+   # we're done with the output file
+   unset inLine
+   close $fid
+   
+   return [list $coor $qmVec $qmMag]
 }
 
 #======================================================
@@ -1240,33 +1325,25 @@ proc ::ForceFieldToolKit::Psi4::WriteComFile_GenBonded { geomCHK com qmProc qmMe
     # make a copy of the CHK file to prevent Psi4 from overwriting the original
     set newCHKname "[file rootname $com].chk"
     file copy $geomCHK $newCHKname
-
+    
+    # assign atom names and gather x,y,z for the output file
+    set atom_info {}
+    for {set i 0} {$i < [molinfo top get numatoms]} {incr i} {
+        set temp [atomselect top "index $i"]
+        lappend atom_info [list [$temp get element] [$temp get x] [$temp get y] [$temp get z]]
+        $temp delete
+    }
+    
     # write the com file
     set outfile [open $com w]
-    puts $outfile "%chk=[file tail $newCHKname]"
-    puts $outfile "%nproc=$qmProc"
-    puts $outfile "%mem=${qmMem}GB"
-    puts $outfile "$qmRoute"
-    puts $outfile ""
 
     # shamelessly stolen from qmtool
-    # First delete all existing internal coordinates
-    puts $outfile "B * * K"
-    puts $outfile "A * * * K"
-    puts $outfile "L * * * K"
-    puts $outfile "D * * * * K"
-    #puts $outfile "O * * * * R"
-
-    set num 0
+    set bonds {}
+    set angles {}
+    set dihedrals {}
     set lbList {}
     foreach entry $zmat {
-        # skip the qmtool zmat header (first line)
-        if {$num==0} { incr num; continue }
-
-        set indexes {}
-        foreach ind [lindex $entry 2] {
-            lappend indexes [expr {$ind+1}]
-        }
+        set indexes [lindex $entry 2]
         set type [string toupper [string index [lindex $entry 1] 0]]
 
         # check for linear angle
@@ -1285,24 +1362,123 @@ proc ::ForceFieldToolKit::Psi4::WriteComFile_GenBonded { geomCHK com qmProc qmMe
                 if { [string match "*$ang*" $indexes] || [string match "*[lreverse $ang]*" $indexes] } {
                     # positive test -> leave this dihedral out
                     set skipflag 1
-                    incr num
                     break
                 }
             }
         }
-        if { $skipflag } { continue }
+        if { $skipflag } {
+            continue
+        }
 
-        # impropers modeled as dihedrals because Psi4 ignores out-of-plane bends
-        if {$type=="I"} { set type "D" }
-        if {$type=="O"} { set type "D" }
+        if {$type == "B"} {
+            lappend bonds "([lindex $indexes 0], [lindex $indexes 1])," 
+        } elseif { $type=="A" } {
+            lappend angles "([lindex $indexes 0], [lindex $indexes 1], [lindex $indexes 2]),"
+        } elseif { $type=="D" || $type=="I" || $type=="O" } { 
+            # impropers modeled as dihedrals because Gaussian ignores out-of-plane bends
+            # assume Psi4 does the same thing
+            lappend dihedrals "([lindex $indexes 0], [lindex $indexes 1], [lindex $indexes 2], [lindex $indexes 3]),"
+        }
 
-        # write the entry to the input file
-        puts $outfile "$type $indexes A [regsub {[QCRM]} [lindex $entry 5] {}]"
-        #puts $outfile "$type $indexes $val [regsub {[QCRM]} [lindex $entry 5] {}]"
-        incr num
+        # puts $outfile "$type $indexes A [regsub {[QCRM]} [lindex $entry 5] {}]"
     }
 
+    puts $outfile "import numpy as np"
+    puts $outfile "import psi4"
+    puts $outfile "import optking"
     puts $outfile ""
+    puts $outfile "psi4.core.set_output_file(\'hess.out\')"
+    puts $outfile "psi4.set_memory(\'${qmMem}GB\')"
+    puts $outfile "psi4.set_num_threads($qmProc)"
+    puts $outfile ""
+
+    puts $outfile "# Specify geometry here"
+    puts $outfile "mol = psi4.geometry(\"\"\""
+    puts $outfile "$qmCharge $qmMult"
+    foreach atom_entry $atom_info {
+        puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+    }
+    puts $outfile "\"\"\")"
+    puts $outfile ""
+
+    # write the entry to the input file
+    puts $outfile "# Specify internal coordinates  here"
+    puts $outfile "# Note: atoms indices start at zero"
+    puts $outfile "bonds = \["
+    foreach bond $bonds { 
+        puts $outfile $bond
+    }
+    puts $outfile "]"
+    puts $outfile ""
+    
+    puts $outfile "angles = \["
+    foreach angle $angles { 
+        puts $outfile $angle
+    }
+    puts $outfile "]"
+    puts $outfile ""
+    
+    puts $outfile "dihedrals = \["
+    foreach dihedral $dihedrals { 
+        puts $outfile $dihedral
+    }
+    puts $outfile "]"
+    puts $outfile ""
+
+    puts $outfile "psi4_options  = {"
+    puts $outfile "\"mp2_type\" : \"df\","
+    puts $outfile "\"freeze_core\" : True,"
+    puts $outfile "\"basis\" : \"6-31G*\","
+    puts $outfile "\"g_convergence\" : \"gau_tight\","
+    puts $outfile "}"
+    puts $outfile ""
+    
+    puts $outfile "psi4.set_options(psi4_options)"
+    puts $outfile ""
+
+    puts $outfile "# Optimize and extract information, inc. final geometry"
+    puts $outfile "json_output = optking.optimize_psi4(\'MP2\')"
+    puts $outfile "E = json_output\[\'energies\']\[-1]"
+    puts $outfile "print(f\"Optimized Energy: {E}\")"
+    puts $outfile "xyz_array = np.array(json_output\[\'final_molecule\']\[\'geometry\'])"
+    puts $outfile "xyz = xyz_array.reshape(mol.natom(), 3)"
+    puts $outfile "mol.set_geometry(psi4.core.Matrix.from_array(xyz))"
+    puts $outfile ""
+
+    puts $outfile "optking.optparams.Params = optking.optparams.OptParams({})"
+    puts $outfile ""
+
+    puts $outfile "from optking import stre, bend, tors"
+    puts $outfile "bonds = \[stre.Stre(*bond) for bond in bonds]"
+    puts $outfile "angles = \[bend.Bend(*angle) for angle in angles]"
+    puts $outfile "dihedrals = \[tors.Tors(*dihedral) for dihedral in dihedrals]"
+    puts $outfile "coords = bonds + angles + dihedrals"
+    puts $outfile ""
+
+    puts $outfile "psi4.set_options(psi4_options)"
+    puts $outfile "Z = \[mol.Z(i) for i in range(0,mol.natom())]"
+    puts $outfile "masses = \[mol.mass(i) for i in range(0,mol.natom())]"
+    puts $outfile "f1 = optking.frag.Frag(Z, xyz, masses, intcos=coords, frozen=False)"
+    puts $outfile "OptMol = optking.molsys.Molsys(\[f1])"
+    puts $outfile "print(OptMol)"
+    puts $outfile ""
+
+    puts $outfile "# Compute the Cartesian Hessian with psi4"
+    puts $outfile "Hxyz = psi4.hessian(\'MP2\') # returns a psi4 matrix"
+    puts $outfile "print(\'Cartesian hessian\')"
+    puts $outfile "print(Hxyz.to_array())"
+    puts $outfile ""
+
+    puts $outfile "# Transform hessian to internals with optking, returns a numpy array"
+    puts $outfile "Hq = optking.intcosMisc.hessian_to_internals(Hxyz.to_array(), OptMol)"
+    puts $outfile "print(\'Internal Coordinate Hessian\')"
+    puts $outfile "print(Hq)"
+    puts $outfile ""
+
+    puts $outfile "# Also print transformed Hessian to output File"
+    puts $outfile "psi4.core.Matrix.from_array(Hq).print_out()"
+    puts $outfile ""
+
     close $outfile
 
 }
@@ -1340,10 +1516,10 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsGenBonded {} {
     # resets the QM settings to the default values
     set ::ForceFieldToolKit::GenBonded::qmProc 1
     set ::ForceFieldToolKit::GenBonded::qmMem 1
-    set ::ForceFieldToolKit::GenBonded::qmRoute "\# MP2/6-31G* Geom=(AllCheck,ModRedundant) Freq NoSymm IOp(7/33=1) SCF=Tight Guess=Read"
+    set ::ForceFieldToolKit::GenBonded::qmRoute "MP2"
 
     # Reset name of output QM file.
-    set ::ForceFieldToolKit::GenBonded::com "hess.gau"
+    set ::ForceFieldToolKit::GenBonded::com "hess.py"
 
 }
 #===========================================================================================================
@@ -1394,7 +1570,6 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile "import psi4"
             puts $outfile "import qcelemental as qcel"
             puts $outfile "import optking"
-            puts $outfile "psi4.set_num_threads($qmProc)"
             puts $outfile "psi4.set_memory(\'$qmMem GB\')"
             if {$sign == 1} {
             puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan${scanCount}.pos.out\', False)"
@@ -1417,6 +1592,7 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
 
             puts $outfile ""
             puts $outfile "scan = \[\]"
+            puts $outfile "coordinate = \[\]"
 
             puts $outfile ""
             set stepsize [lindex $dih 2]
@@ -1433,9 +1609,61 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile {    json_output = optking.optimize_psi4("mp2", **fixD)}
             puts $outfile {    E = json_output["energies"][-1]}
             puts $outfile "    scan.append((dihedral, E))"
+            puts $outfile {    coordinate.append(json_output['trajectory'][-1]['molecule']['geometry'])}
             puts $outfile "    dihedral += [expr $stepsize*$sign]"
             puts $outfile ""
             puts $outfile "print(scan)"
+
+            puts $outfile ""
+            puts $outfile {nstep = len(scan)}
+            puts $outfile {indices = "[lindex $zeroInds 0] [lindex $zeroInds 1] [lindex $zeroInds 2] [lindex $zeroInds 3]"}
+            puts $outfile {energy = json_output["energies"]}
+
+            ############################################################
+            # don't need this
+
+            puts $outfile ""
+            if {$sign == 1} {
+              set filename_sup $basename.scan${scanCount}.pos.supplement
+              puts $outfile "with open(${filename_sup}.py, 'w') as f:"
+            } elseif {$sign == -1} {
+              set filename_sup $basename.scan${scanCount}.neg.supplement
+              puts $outfile "with open(${filename_sup}.py, 'w') as f:"
+            }
+            ############################################################
+
+            puts $outfile {# use indices to write the indices, scan to write energies and dihedrals, and trajectory to write the coordinates}
+            puts $outfile "with open(${filename_sup}.out, 'w') as f:"
+            puts $outfile {    # write the indices}
+            puts $outfile {    f.write("indices \n")}
+            puts $outfile {    for i in range(nstep):}
+            puts $outfile {        f.write(indices + "\n")}
+            puts $outfile {    f.write("end indices \n")}
+
+            puts $outfile {    # write the dihedrals}
+            puts $outfile {    f.write("dihedrals \n")}
+            puts $outfile {    for i in range(nstep):}
+            puts $outfile {        f.write(str(scan[i][0]) + "\n")}
+            puts $outfile {    f.write("end dihedrals \n")}
+
+            puts $outfile {    # write the energies}
+            puts $outfile {    f.write("energies \n")}
+            puts $outfile {    for i in range(nstep):}
+            puts $outfile {        f.write(str(scan[i][1]) + "\n")}
+            puts $outfile {    f.write("end energies \n")}
+
+            puts $outfile {    # write the coordinates}
+            puts $outfile {    f.write("coordinates \n")}
+            puts $outfile {    for i in range(nstep):}
+            puts $outfile {        s = ""}
+            puts $outfile {        for j in range(len(coordinate[i])//3):}
+            puts $outfile "            s += \"{\""
+            puts $outfile {            for k in range(3):}
+            puts $outfile {                s += str(coordinate[i][3*j + k]) + " "}
+            puts $outfile "            s += \"} \""
+            puts $outfile {        f.write(s + "\n")}
+            puts $outfile {    f.write("end coordinates \n")}
+
 
         close $outfile
 
@@ -1513,92 +1741,43 @@ proc ::ForceFieldToolKit::Psi4::readLog_TorExplor { log } {
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::parseGlog_DihOpt { debug debugLog GlogFile } {
 
-    # localize forcefieldtoolkit debugging variables
-    # variable debug
-    # variable debugLog
-
     # initialize log-wide variables
-    set currDihVal {}; set currCoords {}; set currEnergy {}
+    set scanDihInds {}; set currDihVal {}; set currCoords {}; set currEnergy {}
+    set tmpGlogData {}; GlogData {}
     set infile [open $GlogFile r]
-    set GlogData {}
 
-    # read through Psi4 Log File (Glog)
+    # read through the Psi4 output File (Glog)
     while {[eof $infile] != 1} {
         # read a line in
         set inline [gets $infile]
         # parse line
         switch -regexp $inline {
-            {Initial Parameters} {
-                # keep reading until finding the dihedral being scanned
-                while { [lindex [set inline [gets $infile]] 4] ne "Scan" } {
-                    continue
-                }
-                # parse out the dihedral definition (1-based indices)
-                set scanDihDef [lindex $inline 2]
-                # strip out four indices from D(#1,#2,#3,#4)
-                set scanDihInds {}
-                foreach ind [split [string range $scanDihDef 2 [expr [string length $scanDihDef] - 2]] ","] {
-                   lappend scanDihInds [expr $ind - 1]
-                }
-
-                if { $debug } {
-                    puts $debugLog "Scan dihedral FOUND:"
-                    puts $debugLog "\tPsi4 Indicies: $scanDihDef"
-                    puts $debugLog "\t0-based Indicies (VMD): $scanDihInds"
-                    puts $debugLog "--------------------------------------"
-                    puts $debugLog "Ind (VMD)\tCurrDih\tEnergy (kcal/mol)"
-                    puts $debugLog "--------------------------------------"
-                    flush $debugLog
+            {indices} {
+                while { [set inline [gets $infile]] ne "end indices" } {
+                    lappend scanDihInds [list $inline]
                 }
             }
-
-            {Input orientation:} {
-                # clear any existing coordinates
-                set currCoords {}
-                # burn the header
-                for {set i 0} {$i<=3} {incr i} {
-                    gets $infile
-                }
-                # parse coordinates
-                while { [string range [string trimleft [set line [gets $infile]] ] 0 0] ne "-" } {
-                    lappend currCoords [lrange $line 3 5]
+            {dihedral} {
+                while { [set inline [gets $infile]] ne "end dihedral" } {
+                    lappend currDihVal $inline
                 }
             }
-
-            {SCF[ \t]*Done:} {
-                # parse E(RHF) energy; convert hartrees to kcal/mol
-                set currEnergy [expr {[lindex $inline 4] * 627.5095}]
-                # NOTE: this value will be overridden if E(MP2) is also found
-            }
-
-            {E2.*EUMP2} {
-                # convert from Psi4 notation in hartrees to scientific notation
-                set currEnergy [expr {[join [split [lindex [string trim $inline] end] D] E] * 627.5095}]
-                # NOTE: this overrides the E(RHF) parse from above
-            }
-
-            {Optimization completed} {
-                # we've reached an optimized conformation
-                # keep reading until finding the scanned dihedral
-                while { [lindex [set inline [gets $infile]] 2] ne $scanDihDef } {
-                    continue
+            {energy} {
+                while { [set inline [gets $infile]] ne "end energy" } {
+                    lappend currEnergy $inline
                 }
-                # parse out the current dihedral value; round to integer
-                set currDihVal [expr { round([lindex $inline 3]) }]
-
-                # add the collected information to the master list
-                # lappend GlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
-                lappend tempGlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
-
-                if { $debug } {
-                    puts $debugLog "$scanDihInds\t$currDihVal\t$currEnergy"
-                    flush $debugLog
+            }
+            {coordinates} {
+                while { [set inline [gets $infile]] ne "end coordinates" } {
+                    lappend currCoords [list $inline]
                 }
             }
         }; # end of line parse (switch)
     }; # end of cycling through Glog lines (while)
 
-    # if the Psi4 log file runs the scan in negative direction, reverse the order of entries
+    lappend tempGlogData [list $scanDihInds $currDihVal $currEnergy $currCoords]
+
+    # if the Psi4 output file runs the scan in negative direction, reverse the order of entries
     # if not explicitely in the negative direction, preserve the order of entries
     if { [lsearch -exact [split $GlogFile \.] "neg"] != -1 } {
         foreach ele [lreverse $tempGlogData] { lappend GlogData $ele }
