@@ -1571,10 +1571,11 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile "import qcelemental as qcel"
             puts $outfile "import optking"
             puts $outfile "psi4.set_memory(\'$qmMem GB\')"
+            puts $outfile "psi4.set_num_threads($qmProc)"
             if {$sign == 1} {
-            puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan${scanCount}.pos.out\', False)"
+            puts $outfile "psi4.set_output_file(\'${basename}.scan${scanCount}.pos.out\', False)"
             } elseif {$sign == -1} {
-            puts $outfile "psi4.set_output_file(\'${outPath}/${basename}.scan${scanCount}.neg.out\', False)"
+            puts $outfile "psi4.set_output_file(\'${basename}.scan${scanCount}.neg.out\', False)"
             }
             puts $outfile ""
 
@@ -1596,7 +1597,7 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
 
             puts $outfile ""
             set stepsize [lindex $dih 2]
-            set step [expr int([expr [lindex $dih 1]/$stepsize/2]) + 1]
+            set step [expr int([lindex $dih 1]/$stepsize) + 1]
             puts $outfile "for i in range(0, $step):"
             puts $outfile "    fixD = {\"ranged_dihedral\": \"($oneInds \" + str(dihedral) + \" \" + str(dihedral) + \")\"}"
             puts $outfile "    options = {"
@@ -1616,7 +1617,7 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
 
             puts $outfile ""
             puts $outfile {nstep = len(scan)}
-            puts $outfile {indices = "[lindex $zeroInds 0] [lindex $zeroInds 1] [lindex $zeroInds 2] [lindex $zeroInds 3]"}
+            puts $outfile "indices = '[lindex $zeroInds 0] [lindex $zeroInds 1] [lindex $zeroInds 2] [lindex $zeroInds 3]'"
             puts $outfile {energy = json_output["energies"]}
 
             ############################################################
@@ -1625,15 +1626,15 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile ""
             if {$sign == 1} {
               set filename_sup $basename.scan${scanCount}.pos.supplement
-              puts $outfile "with open(${filename_sup}.py, 'w') as f:"
+              #puts $outfile "with open(${filename_sup}.py, 'w') as f:"
             } elseif {$sign == -1} {
               set filename_sup $basename.scan${scanCount}.neg.supplement
-              puts $outfile "with open(${filename_sup}.py, 'w') as f:"
+              #puts $outfile "with open(${filename_sup}.py, 'w') as f:"
             }
             ############################################################
 
             puts $outfile {# use indices to write the indices, scan to write energies and dihedrals, and trajectory to write the coordinates}
-            puts $outfile "with open(${filename_sup}.out, 'w') as f:"
+            puts $outfile "with open('${filename_sup}.out', 'w') as f:"
             puts $outfile {    # write the indices}
             puts $outfile {    f.write("indices \n")}
             puts $outfile {    for i in range(nstep):}
@@ -1743,32 +1744,33 @@ proc ::ForceFieldToolKit::Psi4::parseGlog_DihOpt { debug debugLog GlogFile } {
 
     # initialize log-wide variables
     set scanDihInds {}; set currDihVal {}; set currCoords {}; set currEnergy {}
-    set tmpGlogData {}; GlogData {}
+    set tmpGlogData {}; set GlogData {}
     set infile [open $GlogFile r]
 
     # read through the Psi4 output File (Glog)
     while {[eof $infile] != 1} {
         # read a line in
         set inline [gets $infile]
+        puts $inline
         # parse line
         switch -regexp $inline {
             {indices} {
-                while { [set inline [gets $infile]] ne "end indices" } {
+                while { [string match [set inline [gets $infile]] "end indices"] } {
                     lappend scanDihInds [list $inline]
                 }
             }
             {dihedral} {
-                while { [set inline [gets $infile]] ne "end dihedral" } {
+                while { [string match [set inline [gets $infile]] "end dihedral"] } {
                     lappend currDihVal $inline
                 }
             }
             {energy} {
-                while { [set inline [gets $infile]] ne "end energy" } {
+                while { [string match [set inline [gets $infile]] "end energy"] } {
                     lappend currEnergy $inline
                 }
             }
             {coordinates} {
-                while { [set inline [gets $infile]] ne "end coordinates" } {
+                while { [string match [set inline [gets $infile]] "end coordinates"] } {
                     lappend currCoords [list $inline]
                 }
             }
