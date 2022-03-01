@@ -2168,6 +2168,12 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
     if {$::ForceFieldToolKit::qmSoft eq "Gaussian"} {
         ::QMtool::use_vmd_molecule $hessLogID
         ::QMtool::load_gaussian_log $hessLog $hessLogID
+    } 
+    if {$::ForceFieldToolKit::qmSoft eq "Psi4"} {
+        puts ""
+        # set hessLogID [::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::loadLOGFile $hessLog]; # invalid command name "Psi4::loadLOGFile"
+        # set hessLogID [::ForceFieldToolKit::${qmSoft}::loadLOGFile $hessLog] # can't read "qmSoft": no such variable
+        # set hessLogID [$::ForceFieldToolKit::qmSoft::loadLOGFile $hessLog] # can't read "::ForceFieldToolKit::qmSoft::loadLOGFile": no such variable
     }
 
     # not sure if this step is necessary
@@ -2179,8 +2185,8 @@ proc ::ForceFieldToolKit::gui::baoptGuessPars {} {
     # average replicates from guessZmatqmEff
     set replicateAvgZmat [::ForceFieldToolKit::SharedFcns::avgZmatReplicates $hessLogID $zmatqmEff]
 
-puts "replicateAvgZmat"
-puts $replicateAvgZmat
+    puts "replicateAvgZmat"
+    puts $replicateAvgZmat
     # process bonds/angles and crosscheck the averaged zmat against the in-progress file
 
     # clear out the tv box
@@ -2188,10 +2194,10 @@ puts $replicateAvgZmat
 
     # read in the in-prog parameters
     lassign [::ForceFieldToolKit::SharedFcns::readParFile $parInProg] bondPars anglePars trashCollector
-puts "bondPars"
-puts $bondPars
-puts "anglePars"
-puts $anglePars
+    puts "bondPars"
+    puts $bondPars
+    puts "anglePars"
+    puts $anglePars
     # bonds
     foreach bond [lsearch -index 0 -inline -all $replicateAvgZmat "bond"] {
         lassign $bond indDef typeDef fc eq trashCollector

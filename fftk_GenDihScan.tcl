@@ -167,19 +167,18 @@ proc ::ForceFieldToolKit::GenDihScan::buildGaussianFiles {} {
     if { ![::ForceFieldToolKit::GenDihScan::sanityCheck] } { return }
 
 
-    ::ForceFieldToolKit::${qmSoft}::buildFiles_GenDihScan $dihData $outPath $basename $qmProc $qmCharge $qmMem $qmMult $qmRoute $psf $pdb 
+    ::ForceFieldToolKit::${qmSoft}::buildFiles_GenDihScan $dihData $outPath $basename $qmProc $qmCharge $qmMem $qmMult $qmRoute $psf $pdb
 
     # clean up
     mol delete top
 }
 #======================================================
-
 #======================================================
 # TORSION EXPLORER
 #======================================================
 namespace eval ::ForceFieldToolKit::GenDihScan::TorExplor {
     # namespace variables
-    
+
     # QM software used. Inherit variable from ::ForceFieldToolKit::GenDihScan namespace
     variable qmSoft $::ForceFieldToolKit::qmSoft
 
@@ -529,7 +528,7 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::launchGUI {} {
         set ymin $::ForceFieldToolKit::GenDihScan::TorExplor::ymin
         set ymax $::ForceFieldToolKit::GenDihScan::TorExplor::ymax
         # update the plot
-        $::ForceFieldToolKit::GenDihScan::TorExplor::plothandle configure -xmin $xmin -xmax $xmax -ymin $ymin -ymax $ymax 
+        $::ForceFieldToolKit::GenDihScan::TorExplor::plothandle configure -xmin $xmin -xmax $xmax -ymin $ymin -ymax $ymax
         $::ForceFieldToolKit::GenDihScan::TorExplor::plothandle replot
         # update the sliders
         .namdTutPlot.hlf.rp.plotControls.sliders.xMin configure -value $xmin
@@ -637,7 +636,7 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::setup {logList} {
         if { $l eq "" || ![file exists $l] } {tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find output file"; return}
     }
 
-    # make sure qmSoft variable is set to the right value for the output file 
+    # make sure qmSoft variable is set to the right value for the output file
     foreach l $logList {
         if {[::ForceFieldToolKit::SharedFcns::checkWhichQM $l]} {return}
     }
@@ -797,7 +796,7 @@ proc ::ForceFieldToolKit::GenDihScan::TorExplor::readLog {log} {
 
     # initialize some variables
     set indDef {}; set stepEn {}; set stepCoords {}
-       
+
     lassign [ ::ForceFieldToolKit::${qmSoft}::readLog_TorExplor $log ] indDef stepEn stepCoords
 
     # return the parsed data

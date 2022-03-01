@@ -1250,9 +1250,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
        set ::ForceFieldToolKit::qmSoft "Psi4"
 
        ::ForceFieldToolKit::Psi4::resetDefaultsGeomOpt
-#       ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix
-#       ::ForceFieldToolKit::Psi4::resetDefaultsESP
-#       ::ForceFieldToolKit::Psi4::resetDefaultsGenBonded
+       ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix
+       ::ForceFieldToolKit::Psi4::resetDefaultsESP
+       ::ForceFieldToolKit::Psi4::resetDefaultsGenBonded
        ::ForceFieldToolKit::Psi4::resetDefaultsGenDihScan
     }
 
@@ -1677,7 +1677,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
 #               ::ForceFieldToolKit::ORCA::tempORCAmessage
 #               return
 #            }
-            set ::ForceFieldToolKit::gui::gzmCOMfiles [tk_getOpenFile -title "Select QWERTY QM File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllInpType]
+            set ::ForceFieldToolKit::gui::gzmCOMfiles [tk_getOpenFile -title "Select QM File(s) to Load" -multiple 1 -filetypes $::ForceFieldToolKit::gui::AllInpType]
             if { [llength $::ForceFieldToolKit::gui::gzmCOMfiles] eq 0 } {
                return
             } else {
@@ -1704,7 +1704,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
             } else {
                 set molList {}
                 foreach logfile $::ForceFieldToolKit::gui::gzmLOGfiles {
-	 	    set molId [::ForceFieldToolKit::GenZMatrix::loadLOGFile $logfile]
+	 	            set molId [::ForceFieldToolKit::GenZMatrix::loadLOGFile $logfile]
                     #set molId [mol new]
                     #::QMtool::use_vmd_molecule $molId
                     #catch { ::QMtool::read_gaussian_log $logfile $molId }
@@ -3715,7 +3715,9 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     # set a binding to unselect entry when pressing escape button
     bind $baopt.pconstr.pars2opt <KeyPress-Escape> { .fftk_gui.hlf.nb.bondangleopt.pconstr.pars2opt selection set {} }
 
-    ttk::button $baopt.pconstr.fftkGuessPars -text "Guess" -command { ::ForceFieldToolKit::gui::baoptGuessPars }
+    ttk::button $baopt.pconstr.fftkGuessPars -text "Guess" -command { 
+        ::ForceFieldToolKit::gui::baoptGuessPars 
+    }
     ttk::button $baopt.pconstr.import -text "Import" \
         -command {
             if {[file readable $::ForceFieldToolKit::BondAngleOpt::parInProg]} {
@@ -4437,11 +4439,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
             foreach ele [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv children {}] {
                 lappend ::ForceFieldToolKit::GenDihScan::dihData [.fftk_gui.hlf.nb.genDihScan.dihs2scan.tv item $ele -values]
             }
-            if {$::ForceFieldToolKit::qmSoft eq "Gaussian"} {
-              ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
-            } elseif {$::ForceFieldToolKit::qmSoft eq "Psi4"} {
-              ::ForceFieldToolKit::GenDihScan::buildPsi4Files
-            }
+            ::ForceFieldToolKit::GenDihScan::buildGaussianFiles
             ::ForceFieldToolKit::gui::consoleMessage "QM files written (Scan Torsions)"
         }
     ttk::button $gds.generate.load -text "Load Dihedral Scan Output Files" \
