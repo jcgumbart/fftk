@@ -413,7 +413,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			set aGname [expr $aInd + 1]
 			set bGname [expr $bInd + 1]
 			set cGname [expr $cInd + 1]
-      # puts "aGname $aGname bGname $bGname cGname $cGname"
+            # puts "aGname $aGname bGname $bGname cGname $cGname"
 
 			if { $class eq "donor" } {
 				# donor
@@ -874,10 +874,9 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     set outfile [open [file join $outFolderPath wat-sp.py] w]
     puts $outfile "import psi4"
     puts $outfile ""
+    puts $outfile "psi4.set_output_file(\"wat-sp.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
     puts $outfile "# RHF/6-31G* SCF=Tight"
-    puts $outfile ""
-    puts $outfile "# wat-sp"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
     puts $outfile "O"
@@ -887,7 +886,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize(\"RHF/6-31G*\", molecule=molecule)"
+    puts $outfile "psi4.optimize(\"HF/6-31G*\", molecule=molecule)   #RHF HF"
     close $outfile
 
 }
@@ -996,8 +995,8 @@ proc ::ForceFieldToolKit::Psi4::getscf_ChargeOpt { file simtype } {
    while {![eof $fid]} {
      set line [string trim [gets $fid]]
 
-     if {[string match "Total Energy =" $line]} {
-         set scf [lindex $line 2]
+     if {[string match "Total Energy =" [lrange $line 0 2]]} {
+         set scf [lindex $line 3]
          set scfkcal [expr {$scf*$hart_kcal*$mol}]
          if {$num==0} { set ori $scf }
          set scfkcalori [expr {($scf-$ori)*$hart_kcal*$mol}]
@@ -1018,11 +1017,13 @@ proc ::ForceFieldToolKit::Psi4::getMolCoords_ChargeOpt { file numMolAtoms } {
    set fid [open $file r]
    while { ![eof $fid] } {
       set inLine [string trim [gets $fid]]
-      set coordlist {}   # define inside the while loop so they can be overwirtten until the last optimization
       if { $inLine eq "==> Geometry <==" } {
+         # define coordlist inside the while loop so they can be overwirtten until the last optimization
+         set coordlist {}         
+         
          # jump to coordinates
          for {set i 0} {$i < 8} {incr i} {  # burn-in the header
-             gets $inFile
+             gets $fid
          }
          # read coordinates
          while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
@@ -1039,17 +1040,20 @@ proc ::ForceFieldToolKit::Psi4::getMolCoords_ChargeOpt { file numMolAtoms } {
 
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::ORCA::getWatCoords_ChargeOpt { file } {
+proc ::ForceFieldToolKit::Psi4::getWatCoords_ChargeOpt { file } {
 
    set fid [open $file r]
+
    while { ![eof $fid] } {
       set inLine [string trim [gets $fid]]
-      set coordlist {}   # define inside the while loop so they can be overwirtten until the last optimization
-      set atomnames {}
-      if { $inLine eq "==> Geometry <==" } {
+      if { $inLine eq "==> Geometry <==" } {       
+         # define inside the while loop so they can be overwirtten until the last optimization
+         set atomnames {}
+         set coordlist {}
+
          # jump to coordinates
          for {set i 0} {$i < 8} {incr i} {  # burn-in the header
-             gets $inFile
+             gets $fid
          }
          # read coordinates
          while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
@@ -1066,12 +1070,12 @@ proc ::ForceFieldToolKit::ORCA::getWatCoords_ChargeOpt { file } {
       set name [lindex $atomnames $i]
       if { [string match "O*" $name] } {
          set Ocoord [lindex $coordlist $i]
-      } elseif { [string match "H*" $name] && $Hcount == 1} {
-         set H2coord [lindex $coordlist $i]
-         set Hcount 2
       } elseif { [string match "H*" $name] && $Hcount == 0} {
          set H1coord [lindex $coordlist $i]
          set Hcount 1
+      } elseif { [string match "H*" $name] && $Hcount == 1} {
+         set H2coord [lindex $coordlist $i]
+         set Hcount 2
       }
   }
 
@@ -1081,28 +1085,30 @@ proc ::ForceFieldToolKit::ORCA::getWatCoords_ChargeOpt { file } {
   return $coords
 }
 #===========================================================================================================
-proc ::ForceFieldToolKit::Psi4::getDipoleData_ChargeOpt { filename } {
+proc ::ForceFieldToolKit::Psi4::getDipoleData_ChargeOpt { file } {
 
    set fid [open $file r]
    while { ![eof $fid] } {
       set inLine [string trim [gets $fid]]
 
       # define inside the while loop so they can be overwirtten until the last optimization
-      set coor {}
-      set qmVec {}
-      set qmMag {}
+      # set coor {}
+      # set qmVec {}
+      # set qmMag {}
 
       if { $inLine eq "==> Geometry <==" } {
+         set coor {}
+
          # jump to coordinates
          for {set i 0} {$i < 8} {incr i} {  # burn-in the header
-             gets $inFile
+             gets $fid
          }
          # read coordinates
          while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
             lappend coor [lrange $inLine 1 3]
          }
-       } elseif { $inLine eq "Dipole Moment: [D]" } {
-           set inLine [string trim [gets $inFile]]
+       } elseif { $inLine eq "Dipole Moment: \[D]" } {
+           set inLine [string trim [gets $fid]]
            set qmVec [list [lindex $inLine 1] [lindex $inLine 3] [lindex $inLine 5]]
            set qmMag [lindex $inLine 7]
        } else {
@@ -1667,8 +1673,10 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             # open the output file
             if {$sign == 1} {
             set outfile [open ${outPath}/${basename}.scan${scanCount}.pos.py w]
+            set fname ${outPath}/${basename}.scan${scanCount}.pos 
             } elseif {$sign == -1} {
             set outfile [open ${outPath}/${basename}.scan${scanCount}.neg.py w]
+            set fname ${outPath}/${basename}.scan${scanCount}.neg
             }
 
             # write the header
@@ -1678,9 +1686,9 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile "psi4.set_memory(\'$qmMem GB\')"
             puts $outfile "psi4.set_num_threads($qmProc)"
             if {$sign == 1} {
-            puts $outfile "psi4.set_output_file('${basename}.scan${scanCount}.pos.out', False)"
+            puts $outfile "psi4.set_output_file('$fname.out', False)"
             } elseif {$sign == -1} {
-            puts $outfile "psi4.set_output_file('${outPath}/${basename}.scan${scanCount}.neg.out', False)"
+            puts $outfile "psi4.set_output_file('$fname.out', False)"
             }
             puts $outfile ""
 
@@ -1726,17 +1734,12 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             puts $outfile {energy = json_output["energies"]}
 
             puts $outfile ""
-            if {$sign == 1} {
-              set filename_sup $basename.scan${scanCount}.pos.supplement
-            } elseif {$sign == -1} {
-              set filename_sup $basename.scan${scanCount}.neg.supplement
-            }
 
             puts $outfile {# use indices to write the indices, scan to write energies and dihedrals, and trajectory to write the coordinates}
-            puts $outfile "with open('${filename_sup}.out', 'w') as f:"
-            puts $outfile {Psi4 dihedral output supplement}
+            puts $outfile "with open('$fname.out', 'a') as f:"
             puts $outfile ""
             puts $outfile {    # write the indices}
+            puts $outfile {    f.write("Psi4 \n")}
             puts $outfile {    f.write("indices \n")}
             puts $outfile {    for i in range(nstep):}
             puts $outfile {        f.write(indices + "\n")}
