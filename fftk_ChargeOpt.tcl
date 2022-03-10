@@ -1179,6 +1179,8 @@ proc ::ForceFieldToolKit::ChargeOpt::optCharges { inpCharges } {
         # get current charge
         set currCharge [expr { 1.602176487E-19 * [lindex $atomInfo($ele) 2] }] ; # in coulombs
         # get qm std orientation xyz
+        puts "dipoleQMcoords $dipoleQMcoords"
+        puts "ind $ind"
         set xyz [vecscale 1E-10 [lindex $dipoleQMcoords $ind]] ; # in meters
 
         # debugging
