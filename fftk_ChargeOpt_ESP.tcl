@@ -3,8 +3,8 @@
 #
 #==============================================================================
 namespace eval ::ForceFieldToolKit::ChargeOpt::ESP:: {
-        variable chk
-        variable gau
+    variable chk
+    variable gau
 	variable gauLog
 	variable qmProc 1
 	variable qmMem 1
@@ -25,8 +25,8 @@ namespace eval ::ForceFieldToolKit::ChargeOpt::ESP:: {
 	variable inputName
 	variable newPsfName
 	variable espStatus	
-
-        variable qmSoft $::ForceFieldToolKit::qmSoft
+    
+    variable qmSoft $::ForceFieldToolKit::qmSoft
 }
 #======================================================
 proc ::ForceFieldToolKit::ChargeOpt::ESP::init {} {
