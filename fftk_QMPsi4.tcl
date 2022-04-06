@@ -277,19 +277,16 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 	# builds and writes the z-matrix to file
 
 	# passed:
-	#		aInd = atom index for interacting atom
-	#		class = acceptor / donor
-	#		gnames = list of Psi4-style names
-	#		outfile = file handle where output is written
+	# aInd = atom index for interacting atom
+	# class = acceptor / donor
+	# gnames = list of Psi4-style names
+	# outfile = file handle where output is written
 
-	# returns: nothing
+	# returns: A1 A2 A3 B1 B2 B3
 
 	# make a selection for atom A (the interaction site), and find all attached atoms
 	set aSel [atomselect top "index $aInd"]
 	set bondlistA [lindex [$aSel getbonds] 0]
-  # puts $aInd
-  # puts $aSel
-  # puts $bondlistA
 
 	# z-matrix will be different for n=1 and n>1 (each will have their own special cases as well)
 	if { [llength $bondlistA] == 1} {
@@ -306,7 +303,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 		if { [molinfo top get numatoms] == 2} { set diatomic 1 }
 		# check if C--B--A is linear
 		if { !$diatomic } {
-      set bInd [lindex $bondlistA 0]
+        set bInd [lindex $bondlistA 0]
 			set bSel [atomselect top "index $bondlistA"]
 			set bondlistB [lindex [$bSel getbonds] 0]
 			foreach ele $bondlistB {
@@ -315,7 +312,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				# check for a non-linear angle (+/- 2 degrees)
 				if { [expr {abs([measure angle [list $aInd $bondlistA $ele]])}] <= 178.0 } {
 					# found a non-linear C atom; unset the flag and stop looking
-          set cInd $ele
+                    set cInd $ele
 					set linear 0; break
 				} else {
 					# keep looking
@@ -326,17 +323,18 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			$bSel delete
 		}
 
-    # define x and Ow as the indices (start from 1) of the dummy atom and O, respectively
-    set x [expr $len_mol + 1]
-    set Ow [expr $len_mol + 2]
+        # define x and Ow as the indices (start from 1) of the dummy atom and O, respectively
+        set x [expr $len_mol + 1]
+        set Ow [expr $len_mol + 2]
 
 		if { $diatomic || $linear } {
+            puts "reach diatomic or linear"
 			# if either diatomic or linear, build a zmatrix for a 1D scan
 
 			# get the relevant gnames
 			set aGname [expr $aInd + 1]
 			set bGname [expr $bondlistA + 1]
-      set cGanme [expr $cInd + 1]   # added
+            set cGanme [expr $cInd + 1]
 
 			# for non-diatomic linear cases, we will define x in cartesian coords
 			if { $linear } {
@@ -380,18 +378,22 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 			# clean up and return
 			$aSel delete
 			if { $linear } { $bSel delete }
-      # assign reference atoms for diatomic/linear N = 1 case
-      lassign "$aGname $bGname $cGname" A1 A2 A3
-      lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
+            
+            # assign reference atoms for diatomic/linear N = 1 case
+            lassign "$aGname $bGname $cGname" A1 A2 A3
+            lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 
 			# done with special n=1 cases (diatomic or linear)
-		} else {
+		
+        } else {
+            puts "reach n=1 normally class $class"
 			# handle the n=1 case 'normally'
 
 			# find some information about B atom
 			set bInd $bondlistA
 			set bSel [atomselect top "index $bInd"]
 			set bondlistB [lindex [$bSel getbonds] 0]
+            puts "bInd $bInd bondlistB $bondlistB"
 
 			# find a valid C atom
 			set cInd {}
@@ -405,6 +407,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 					set cInd $ele
 				}
 			}
+            puts "cInd $cInd"
 
 			# make an atom selection of C atom
 			set cSel [atomselect top "index $cInd"]
@@ -424,9 +427,9 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				puts $outfile "rAH = 2.0"
 				puts $outfile "dih = 0.0"
 
-        # assign reference atoms for "normal" N = 1 case donor
-        lassign "$aGname $bGname $cGname" A1 A2 A3
-        lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
+                # assign reference atoms for "normal" N = 1 case donor
+                lassign "$aGname $bGname $cGname" A1 A3 A2
+                lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 			} else {
 				# acceptor
 				# call helper function to find probe position
@@ -436,12 +439,12 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				set mAng [::QMtool::bond_angle $probePos [measure center $aSel] [measure center $cSel]]
 				set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $cSel] [measure center $bSel]]
 
-        # need to redefine x and Ow because the dummy atom X is at index $len_mol + 2
-        # and Ow is at index $len_mol + 3 instead
-        # In addition, define H1w as the index of H1w
-        set x [expr {$len_mol + 2}]
-        set Ow [expr {$len_mol + 3}]
-        set H1w [expr {$len_mol + 1}]
+                # need to redefine x and Ow because the dummy atom X is at index $len_mol + 2
+                # and Ow is at index $len_mol + 3 instead
+                # In addition, define H1w as the index of H1w
+                set x [expr {$len_mol + 2}]
+                set Ow [expr {$len_mol + 3}]
+                set H1w [expr {$len_mol + 1}]
 
 				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $cGname [format %3.2f $mAng] $bGname [format %3.2f $mDih]]
 				puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $cGname 0.00]
@@ -450,9 +453,9 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 				puts $outfile "rAH = 2.0"
 				puts $outfile "dih = 0.0"
 
-        # assign reference atoms for "normal" N = 1 case aceptor
-        lassign "$aGname $bGname $cGname" A1 A2 A3
-        lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
+                # assign reference atoms for "normal" N = 1 case aceptor
+                lassign "$aGname $bGname $cGname" A1 A2 A3
+                lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
 			}
 
 			# clean up and return
@@ -464,6 +467,8 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 		# N > 1 #
 		#=======#
 
+        puts "reach N > 1"
+
 		# find some information about atom B
 		set bInd [lindex $bondlistA 0]
 		set bSel [atomselect top "index $bInd"]
@@ -473,7 +478,8 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 		# find gnames
 		set aGname [expr $aInd + 1]
 		set bGname [expr $bInd + 1]
-		# set cGname [expr $cInd + 1]   # if cGname is set to be "x2" below, then this line is redundant
+		set cGname [expr $cInd + 1]
+        puts "aGname $aGname bGname $bGname cInd $cInd"
 
 		# test if C is valid choice
 		set abcAng [expr {abs([measure angle [list $aInd $bInd $cInd]])}]
@@ -485,6 +491,8 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 		set mAng [::QMtool::bond_angle $probePos [measure center $aSel] [measure center $bSel]]
 
 		if { !$validC } {
+            puts "reach C is invalid"
+
 			# if C is invalid, ABC are linear and we need a second dummy atom in lieu of the original C atom
 			set cGname [expr $len_mol + 1]
 			set x2Pos [coordtrans [trans center [measure center $aSel] axis [vecsub [measure center $cSel] [measure center $bSel]] 180.0 deg] $probePos]
@@ -498,15 +506,15 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
       set H2w [expr $len_mol + 5]
 
 		} else {
-			# C is valid, we can use it to define the dihedral
+            puts "reach C is valid"
+			
+            # C is valid, we can use it to define the dihedral
 			set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $bSel] [measure center $cSel]]
-
-      set cGname [expr $len_mol + 1]
 
       # define x, Ow, H1w, and H2w
       set x [expr $len_mol + 2]
-      set Ow [expr $len_mol + 1]
-      set H1w [expr $len_mol + 3]
+      set Ow [expr $len_mol + 3]
+      set H1w [expr $len_mol + 1]
       set H2w [expr $len_mol + 4]
 		}
 
@@ -533,7 +541,7 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 
     # assign the reference atoms for N > 1 case
     lassign "$aGname $bGname $cGname" A1 A2 A3
-    lassign "[expr $len_mol + 1] [expr $len_mol + 2] [expr $len_mol + 3]" B1 B2 B3
+    lassign "[expr $len_mol + 1] [expr $len_mol + 3] [expr $len_mol + 2]" B1 B2 B3
 	}
   # return the reference atoms
   # A1, A2, A3 and B1, B2, B3 are defined in
@@ -1019,8 +1027,8 @@ proc ::ForceFieldToolKit::Psi4::getMolCoords_ChargeOpt { file numMolAtoms } {
       set inLine [string trim [gets $fid]]
       if { $inLine eq "==> Geometry <==" } {
          # define coordlist inside the while loop so they can be overwirtten until the last optimization
-         set coordlist {}         
-         
+         set coordlist {}
+
          # jump to coordinates
          for {set i 0} {$i < 8} {incr i} {  # burn-in the header
              gets $fid
@@ -1046,7 +1054,7 @@ proc ::ForceFieldToolKit::Psi4::getWatCoords_ChargeOpt { file } {
 
    while { ![eof $fid] } {
       set inLine [string trim [gets $fid]]
-      if { $inLine eq "==> Geometry <==" } {       
+      if { $inLine eq "==> Geometry <==" } {
          # define inside the while loop so they can be overwirtten until the last optimization
          set atomnames {}
          set coordlist {}
@@ -1143,13 +1151,14 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix {} {
 #===========================================================================================================
 
 proc ::ForceFieldToolKit::Psi4::writeGauFile_ESP { chk qmProc qmMem qmCharge qmMult qmRoute gau } {
+    
+    variable atom_info
 
-    ### make sure that the chk file is from Psi4 or that a pdb file was provided ###
     # Give error message if no suitable file was found
     if { [file extension $chk] ne ".chk" && [file extension $chk] ne ".pdb" } {
-        tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "The structure file was not recognized.\
-                 Please provide a Psi4 Checkpoint file (.chk) or a PDB file (.pdb)."
-        return
+	tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "The structure file was not recognized.\
+		 Please provide an a .chk file or a PDB file (.pdb)."
+	return
     }
 
     ### Get atomic coordinates ###
@@ -1167,51 +1176,46 @@ proc ::ForceFieldToolKit::Psi4::writeGauFile_ESP { chk qmProc qmMem qmCharge qmM
         }
         # remove loaded molecule
         mol delete top
-        # write the .gau file
-	set newCHKname "[file rootname $gau].chk"
-        set gauFile [open $gau w]
-        # write header
-        puts $gauFile "%chk=[file tail $newCHKname]"
-        puts $gauFile "%nproc=$qmProc"
-        puts $gauFile "%mem=${qmMem}GB"
-	# Modify route section to remove Geom=Checkpoint, which is not needed if pdb is used. Give message in tk.
-	regsub -nocase {Geom=Checkpoint} $qmRoute {} qmRoute_mod
-   	puts ""
-        puts $gauFile "$qmRoute_mod"
-        puts $gauFile ""
-        puts $gauFile "<qmtool> simtype=\"ESP Calculation\" </qmtool>"
-        puts $gauFile ""
-        puts $gauFile "$qmCharge $qmMult"
-        # write the coordinates
-        foreach atom_entry $atom_info {
-            puts $gauFile "[lindex $atom_entry 0] [format %16.8f [lindex $atom_entry 1]] [format %16.8f [lindex $atom_entry 2]] [format %16.8f [lindex $atom_entry 3]]"
-        }
-        # empty line to terminate
-        puts $gauFile ""
-        close $gauFile
-
     } else {
-    # otherwise copy structural information from Psi4 checkpoint file
-        # make a copy of the CHK file to prevent from overwriting the original
-        set newCHKname "[file rootname $gau].chk"
-        file copy -force $chk $newCHKname
-
-         set gauFile [open $gau w]
-
-         # write the .gau file
-         puts $gauFile "%chk=[file tail $newCHKname]"
-         puts $gauFile "%nproc=$qmProc"
-         puts $gauFile "%mem=${qmMem}GB"
-         puts $gauFile "$qmRoute"
-         puts $gauFile ""
-         puts $gauFile "<qmtool> simtype=\"ESP Calculation\" </qmtool>"
-         puts $gauFile ""
-         puts $gauFile "$qmCharge $qmMult"
-
-         close $gauFile
+        # otherwise extract the information from .chk file
+        tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "The structure file was not recognized.\
+            Please provide a PDB file (.pdb)."
+        return
 
     }
 
+    set file [open $gau w]
+
+    puts $file "import psi4"
+    puts $file "import resp"
+    puts $file ""
+    puts $file "mol = psi4.geometry(\"\"\""
+    puts $file "$qm"
+    # write the cartesian coords for the molecule
+    foreach atom_entry $atom_info {
+        puts $file "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+    }
+    puts $file "    \"\"\")"
+    puts $file "mol.update_geometry()"
+    puts $file ""
+    puts $file "# First stage RESP fit"
+    puts $file "options = { 'RESP_A' : 0.0005,"
+    puts $file "            'RESB_B' : 0.1,"
+    puts $file "            'METHOD_ESP': 'scf',"
+    puts $file "            'BASIS_ESP' : '$qmRoute'}"
+    puts $file ""
+    puts $file "charges_1 = resp.resp(\[mol], options)"
+    puts $file ""
+    puts $file "# Second stage RESP fit"
+    puts $file "# By default, H atoms connected to the same C are contrained to be indentical."
+    puts $file "resp.set_stage2_constraint(mol, charges_1\[1], options)"
+    puts $file "charges_2 = resp.resp(\[mol], options)"
+    puts $file ""
+    puts $file "# Get RESP charges"
+    puts $file "print(\"\\nStage Two:\\n\")"
+    puts $file "print('RESP Charges')"
+    puts $file "print(charges_2\[1])"
+    close $file
 }
 #===========================================================================================================
 
@@ -1308,7 +1312,7 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsESP {} {
     set ::ForceFieldToolKit::ChargeOpt::ESP::qmMem 1
     set ::ForceFieldToolKit::ChargeOpt::ESP::qmCharge 0
     set ::ForceFieldToolKit::ChargeOpt::ESP::qmMult 1
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute "#P HF/6-31G* SCF=Tight Geom=Checkpoint Pop=MK IOp(6/33=2,6/41=10,6/42=17)"
+    set ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute "6-31G*"
 
 }
 
@@ -1493,7 +1497,7 @@ proc ::ForceFieldToolKit::Psi4::WriteComFile_GenBonded { geomCHK com qmProc qmMe
     puts $outfile "    file.write(\"{:5} {:15} {:20} \\n\".format('type', 'indices', 'ANG(DEG)'))"
     puts $outfile "    for frag in OptMol.fragments:"
     puts $outfile "        for i in range(len(frag.intcos)):"
-    puts $outfile "            indices = str(frag.intcos\[i])\[3:-1].split(',')   # the indices goes like ' R(1,2)', ' D(1,2,3,4)', etc." 
+    puts $outfile "            indices = str(frag.intcos\[i])\[3:-1].split(',')   # the indices goes like ' R(1,2)', ' D(1,2,3,4)', etc."
     puts $outfile "            indices_zero = ''"
     puts $outfile "            for idx in indices:"
     puts $outfile "                indices_zero += str(int(idx) - 1) + ','"
@@ -1615,7 +1619,7 @@ proc ::ForceFieldToolKit::Psi4::get_inthessian_kcal_BondAngleOpt { {hessLogID ""
         set rowdata [lindex $hess $i]
         set rowdata_kcal {}
         for { set j 0 } { $j < [llength $rowdata] } { incr j } {
-            set kcal_data [expr { [lindex $rowdata $j]*0.5*1.041308e-21*6.02214e23*0.943*0.943 }] 
+            set kcal_data [expr { [lindex $rowdata $j]*0.5*1.041308e-21*6.02214e23*0.943*0.943 }]
             lappend rowdata_kcal $kcal_data
         }
         lappend inthessian_kcal $rowdata_kcal
@@ -1673,7 +1677,7 @@ proc ::ForceFieldToolKit::Psi4::buildFiles_GenDihScan { dihData outPath basename
             # open the output file
             if {$sign == 1} {
             set outfile [open ${outPath}/${basename}.scan${scanCount}.pos.py w]
-            set fname ${outPath}/${basename}.scan${scanCount}.pos 
+            set fname ${outPath}/${basename}.scan${scanCount}.pos
             } elseif {$sign == -1} {
             set outfile [open ${outPath}/${basename}.scan${scanCount}.neg.py w]
             set fname ${outPath}/${basename}.scan${scanCount}.neg
