@@ -43,6 +43,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"output.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
 
@@ -190,6 +191,7 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
         puts $outfile {# Summary: optimizes intermolecular coordinates between two frozen monomers.}
         puts $outfile {# Split dimers in input with "--"}
         puts $outfile ""
+        puts $outfile "psi4.set_memory(\"$qmMem GB\")"
         puts $outfile "psi4.set_num_threads($qmProc)"
         puts $outfile "psi4.set_output_file(\"${basename}-DON-${donorName}.out\", False)"
         puts $outfile {molecule = psi4.geometry("""}
@@ -237,6 +239,7 @@ proc ::ForceFieldToolKit::Psi4::genZmatrix {outFolderPath basename donList accLi
         puts $outfile {# Summary: optimizes intermolecular coordinates between two frozen monomers.}
         puts $outfile {# Split dimers in input with "--"}
         puts $outfile ""
+        puts $outfile "psi4.set_memory(\"$qmMem GB\")"
         puts $outfile "psi4.set_num_threads($qmProc)"
         puts $outfile "psi4.set_output_file(\"${basename}-ACC-${acceptorName}.out\", False)"
         puts $outfile "molecule = psi4.geometry(\"\"\""
@@ -586,6 +589,7 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile ""
 
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
     puts $outfile {psi4.core.clean_options()}
@@ -836,6 +840,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"${basename}-sp-HF.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
 
@@ -861,6 +866,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"${basename}-sp-MP2.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
 
@@ -884,6 +890,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "psi4.set_output_file(\"wat-sp.out\", False)"
     puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "# RHF/6-31G* SCF=Tight"
     puts $outfile ""
     puts $outfile {molecule = psi4.geometry("""}
