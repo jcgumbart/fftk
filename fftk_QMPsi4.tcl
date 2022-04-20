@@ -52,6 +52,7 @@ proc ::ForceFieldToolKit::Psi4::writeComGeomOpt { molID com qmProc qmMem qmCharg
         puts $outfile "[lindex $atom_entry 0] [format %16.8f [lindex $atom_entry 1]] [format %16.8f [lindex $atom_entry 2]] [format %16.8f [lindex $atom_entry 3]]"
     }
 
+    puts $outfile "nocom"
     puts $outfile {""")}
     puts $outfile ""
     puts $outfile "molecule.set_multiplicity($qmMult)"
@@ -449,10 +450,10 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
                 set Ow [expr {$len_mol + 3}]
                 set H1w [expr {$len_mol + 1}]
 
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $cGname [format %3.2f $mAng] $bGname [format %3.2f $mDih]]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $cGname [format %3.2f $mAng] $bGname [format %3.2f $mDih]]
                 puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $cGname 0.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $H1w 0.9527 $x 90.00 $aGname 180.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9527 $H1w 104.52 $x dih]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9527 $x 90.00 $aGname 180.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9527 $H1w 104.52 $x dih]
                 puts $outfile "rAH = 2.0"
                 puts $outfile "dih = 0.0"
 
@@ -523,18 +524,18 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
 
         if { $class eq "donor" } {
             # donor
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
             puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $Ow 1.0 $aGname 90.00 $bGname dih]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $Ow 0.9572 $aGname 127.74 $x 0.00]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9572 $aGname 127.74 $x 180.00]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $Ow 0.9572 $aGname 127.74 $x 0.00]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
             puts $outfile "rAH = 2.0"
             puts $outfile "dih = 0.0"
         } else {
             # acceptor
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
             puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow $H1w 0.9572 $x 90.00 $aGname 180.00]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w $Ow 0.9572 $H1w 104.52 $x dih]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9572 $x 90.00 $aGname 180.00]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $H1w 104.52 $x dih]
             puts $outfile "rAH = 2.0"
             puts $outfile "dih = 0.0"
         }
@@ -588,8 +589,6 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile "}"
     puts $outfile ""
 
-    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
-    puts $outfile "psi4.set_num_threads($qmProc)"
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
     puts $outfile {psi4.core.clean_options()}
@@ -608,13 +607,13 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile {xyzs = np.array(xyzs)}
     puts $outfile {xyzs = np.reshape(xyzs, (-1,3))}
     puts $outfile {# coords are zero-indexed here:}
-    puts $outfile "rAH = qcel.util.measure_coordinates(xyzs, $A1, $B1, True) # in bohr"
+    puts $outfile "# rAH = qcel.util.measure_coordinates(xyzs, $A1, $B1, True) # in bohr"
     puts $outfile "# dih = qcel.util.measure_coordinates(xyzs, \[...\], True) # in degrees   # dih does not exist in every case"
     puts $outfile ""
 
-    puts $outfile {bohr_to_ang = qcel.constants.conversion_factor("bohr", "angstrom")}
-    puts $outfile {print(rAH * bohr_to_ang)}
-    puts $outfile {print(dih)}
+    puts $outfile {# bohr_to_ang = qcel.constants.conversion_factor("bohr", "angstrom")}
+    puts $outfile {# print(rAH * bohr_to_ang)}
+    puts $outfile {# print(dih)}
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::placeProbe { aSel } {
@@ -948,16 +947,16 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         set firstXYZ 1
         while { ![eof $inFile] } {
             set inLine [string trim [gets $inFile]]
-            if { [string match {==> Geometry <==} $inLine] } {
+            if { [string match {RHF Reference} $inLine] } {
                 # jump to the coordinates
-                for {set i 0} {$i < 8} {incr i} {  # burn-in the header
+                for {set i 0} {$i < 12} {incr i} {  # burn-in the header
                     gets $inFile
                 }
                 # read coordinates
                 set coords {}
                 # get ligand coord
                 while { [regexp {[A-Z]} [set inLine [string trim [gets $inFile]]]] } {
-                    lappend coords [lrange $inLine 0 3]
+                    lappend coords "[lindex $inLine 0] [vecscale 0.529177 [lrange $inLine 1 3]]"
                 }
                 if { $firstXYZ eq 1 } { ;# for the first geom opt iteration, create xyz, fill and load it in VMD
                     set tempFile [open temp.xyz w] ;# create the temp.xyz
@@ -1147,7 +1146,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         set ::ForceFieldToolKit::GenZMatrix::qmMem 1
         set ::ForceFieldToolKit::GenZMatrix::qmCharge 0
         set ::ForceFieldToolKit::GenZMatrix::qmMult 1
-        set ::ForceFieldToolKit::GenZMatrix::qmRoute "mp2/6-31G*"
+        set ::ForceFieldToolKit::GenZMatrix::qmRoute "HF/6-31G*"
 
     }
     #======================================================

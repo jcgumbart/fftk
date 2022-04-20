@@ -1230,6 +1230,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     menu $w.menuQMSelector -tearoff no
     $w.menuQMSelector add command -label "Gaussian" -command {
        set ::ForceFieldToolKit::qmSoft "Gaussian"
+       set ::ForceFieldToolKit::scriptExt ".gau"
 
        ::ForceFieldToolKit::Gaussian::resetDefaultsGeomOpt
        ::ForceFieldToolKit::Gaussian::resetDefaultsGenZMatrix
@@ -1239,6 +1240,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     }
     $w.menuQMSelector add command -label "ORCA"     -command {
        set ::ForceFieldToolKit::qmSoft "ORCA"
+       set ::ForceFieldToolKit::scriptExt ".orca"
 
        ::ForceFieldToolKit::ORCA::resetDefaultsGeomOpt
        ::ForceFieldToolKit::ORCA::resetDefaultsGenZMatrix
@@ -1248,6 +1250,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     }
     $w.menuQMSelector add command -label "Psi4"     -command {
        set ::ForceFieldToolKit::qmSoft "Psi4"
+       set ::ForceFieldToolKit::scriptExt ".py"
 
        ::ForceFieldToolKit::Psi4::resetDefaultsGeomOpt
        ::ForceFieldToolKit::Psi4::resetDefaultsGenZMatrix
@@ -1290,7 +1293,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::label $gopt.io.comLbl -text "Output QM File:" -anchor center
     ttk::entry $gopt.io.com -textvariable ::ForceFieldToolKit::GeomOpt::com
     ttk::button $gopt.io.comSaveAs -text "SaveAs" \
-        -command { set tempfile [tk_getSaveFile -title "Save the QM Input File As..." -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension {.gau}]
+        -command { set tempfile [tk_getSaveFile -title "Save the QM Input File As..." -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension $::ForceFieldToolKit::scriptExt]
                 if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GeomOpt::com $tempfile }
         }
 

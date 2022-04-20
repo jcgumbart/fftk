@@ -51,6 +51,7 @@ namespace eval ::ForceFieldToolKit:: {
 	# Define a QM variable variable identifying the QM package used
 	# By default it is Gaussian
 	variable qmSoft "Gaussian"
+    variable scriptExt ".gau"
 }
 #============================================================================
 
