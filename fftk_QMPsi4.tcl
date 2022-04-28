@@ -742,39 +742,57 @@ proc ::ForceFieldToolKit::Psi4::placeProbe { aSel } {
 proc ::ForceFieldToolKit::Psi4::write120filesWI { outFolderPath basename aName aInd atom_info aGname bGname cGname qmProc qmMem qmRoute qmCharge qmMult } {
     # writes single point energy files required for charge optimization
     # hard coded for HF/6-31G* and MP2/6-31G*
-
     # write two slightly different files
-    foreach altPos {"a" "b"} dihed {180 0} {
 
+    foreach altPos {"a" "b"} dihed {180 0} {
         # open output file
-        set outname [file join $outFolderPath ${basename}-ACC-${aName}-120${altPos}.gau]
+        set outname [file join $outFolderPath ${basename}-ACC-${aName}-120${altPos}.py]
         set outfile [open $outname w]
 
-        # write the header
-        puts $outfile "%chk=${basename}-ACC-${aName}-120${altPos}.chk"
-        puts $outfile "%nproc=$qmProc"
-        puts $outfile "%mem=${qmMem}GB"
-        puts $outfile "$qmRoute"
+        # start python code
+        puts $outfile "import psi4"
+        puts $outfile "import optking"
+        puts $outfile "import qcelemental as qcel"
+        puts $outfile "import numpy as np"
         puts $outfile ""
-        puts $outfile "<qmtool> simtype=\"Geometry optimization\" </qmtool>"
-        puts $outfile "${basename}-ACC-${aName}-120${altPos}"
+        puts $outfile {# Summary: optimizes intermolecular coordinates between two frozen monomers.}
+        puts $outfile {# Split dimers in input with "--"}
         puts $outfile ""
-        puts $outfile "$qmCharge $qmMult"
-
+        puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+        puts $outfile "psi4.set_num_threads($qmProc)"
+        puts $outfile "psi4.set_output_file(\"${basename}-ACC-${aName}-120${altPos}.out\", False)"
+        puts $outfile "molecule = psi4.geometry(\"\"\""
+        
         # write the cartesian coords for the molecule
         foreach atom_entry $atom_info {
             puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
         }
+        puts $outfile "--"
 
         # write custom zmatrix
         set ang 120
-
-        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $bGname [format %3.2f $ang] $cGname [format %3.2f $dihed]]
-        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x H1w 1.0 $aGname 90.00 $bGname 0.00]
-        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow H1w 0.9527 x 90.00 $aGname 180.00]
-        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9527 H1w 104.52 x dih]
+        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $bGname [format %3.2f $ang] $cGname [format %3.2f $dihed]]
+        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
+        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9527 $x 90.00 $aGname 180.00]
+        puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9527 $H1w 104.52 $x dih]
         puts $outfile "rAH  2.0"
         puts $outfile "dih  0.0"
+
+        # assign the reference atoms for N > 1 case
+        lassign "$aGname $bGname $cGname" A1 A2 A3
+        lassign "[expr $len_mol + 1] [expr $len_mol + 3] [expr $len_mol + 2]" B1 B2 B3
+        
+        # build / write the zmatrix
+        set ref_label [list A1 A2 A3 B1 B2 B3]
+        for {set i 0} {$i < 6} {incr i} {
+            set [lindex $ref_label $i] [lindex $ref_val $i]
+        }
+        puts $outfile "nocom"
+        puts $outfile "unit angstrom"
+        puts $outfile "\"\"\")"
+        puts $outfile ""
+
+        ::ForceFieldToolKit::Psi4::write_optZmat $qmMem $qmMult $qmCharge $qmRoute $len_mol $outfile $A1 $A2 $A3 $B1 $B2 $B3
 
         # close up
         close $outfile
@@ -786,19 +804,22 @@ proc ::ForceFieldToolKit::Psi4::write90filesWI { outFolderPath basename aName aI
     # hard coded for HF/6-31G* and MP2/6-31G*
 
     # open output file
-    set outname [file join $outFolderPath ${basename}-ACC-${aName}-ppn.gau]
+    set outname [file join $outFolderPath ${basename}-ACC-${aName}-ppn.py]
     set outfile [open $outname w]
 
-    # write the header
-    puts $outfile "%chk=${basename}-ACC-${aName}-ppn.chk"
-    puts $outfile "%nproc=$qmProc"
-    puts $outfile "%mem=${qmMem}GB"
-    puts $outfile "$qmRoute"
+    # start python code
+    puts $outfile "import psi4"
+    puts $outfile "import optking"
+    puts $outfile "import qcelemental as qcel"
+    puts $outfile "import numpy as np"
     puts $outfile ""
-    puts $outfile "<qmtool> simtype=\"Geometry optimization\" </qmtool>"
-    puts $outfile "${basename}-ACC-${aName}-ppn"
+    puts $outfile {# Summary: optimizes intermolecular coordinates between two frozen monomers.}
+    puts $outfile {# Split dimers in input with "--"}
     puts $outfile ""
-    puts $outfile "$qmCharge $qmMult"
+    puts $outfile "psi4.set_memory(\"$qmMem GB\")"
+    puts $outfile "psi4.set_num_threads($qmProc)"
+    puts $outfile "psi4.set_output_file(\"${basename}-ACC-${aName}-ppn.out\", False)"
+    puts $outfile "molecule = psi4.geometry(\"\"\""
 
     # write the cartesian coords for the molecule
     foreach atom_entry $atom_info {
@@ -806,18 +827,33 @@ proc ::ForceFieldToolKit::Psi4::write90filesWI { outFolderPath basename aName aI
     }
 
     # write custom zmatrix
-    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H1w $aGname rAH $bGname 90.0 $cGname 90.0]
-    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x H1w 1.0 $aGname 90.00 $bGname 0.00]
-    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" Ow H1w 0.9527 x 90.00 $aGname 180.00]
-    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H2w Ow 0.9527 H1w 104.52 x dih]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $bGname 90.0 $cGname 90.0]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9527 $x 90.00 $aGname 180.00]
+    puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9527 $H1w 104.52 $x dih]
     puts $outfile "rAH  2.0"
     puts $outfile "dih  0.0"
 
+    # assign the reference atoms for N > 1 case
+    lassign "$aGname $bGname $cGname" A1 A2 A3
+    lassign "[expr $len_mol + 1] [expr $len_mol + 3] [expr $len_mol + 2]" B1 B2 B3
+    
+    # build / write the zmatrix
+    set ref_label [list A1 A2 A3 B1 B2 B3]
+    for {set i 0} {$i < 6} {incr i} {
+        set [lindex $ref_label $i] [lindex $ref_val $i]
+    }
+    puts $outfile "nocom"
+    puts $outfile "unit angstrom"
+    puts $outfile "\"\"\")"
+    puts $outfile ""
+
+    ::ForceFieldToolKit::Psi4::write_optZmat $qmMem $qmMult $qmCharge $qmRoute $len_mol $outfile $A1 $A2 $A3 $B1 $B2 $B3
+
     # close up
-    close $outfile
+    close $outfile    
 }
 #===========================================================================================================
-
 proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc qmMem qmCharge qmMult } {
     # writes single point energy files required for charge optimization
     # hard coded for HF/6-31G* and MP2/6-31G*
