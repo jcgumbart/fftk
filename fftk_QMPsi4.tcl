@@ -744,6 +744,9 @@ proc ::ForceFieldToolKit::Psi4::write120filesWI { outFolderPath basename aName a
     # hard coded for HF/6-31G* and MP2/6-31G*
     # write two slightly different files
 
+    # length of $atom_info
+    set len_mol [llength $atom_info]
+
     foreach altPos {"a" "b"} dihed {180 0} {
         # open output file
         set outname [file join $outFolderPath ${basename}-ACC-${aName}-120${altPos}.py]
@@ -771,12 +774,17 @@ proc ::ForceFieldToolKit::Psi4::write120filesWI { outFolderPath basename aName a
 
         # write custom zmatrix
         set ang 120
+        
+        set x [expr $len_mol + 2]
+        set Ow [expr $len_mol + 3]
+        set H1w [expr $len_mol + 1]
+
         puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $bGname [format %3.2f $ang] $cGname [format %3.2f $dihed]]
         puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
         puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9527 $x 90.00 $aGname 180.00]
         puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9527 $H1w 104.52 $x dih]
-        puts $outfile "rAH  2.0"
-        puts $outfile "dih  0.0"
+        puts $outfile "rAH = 2.0"
+        puts $outfile "dih = 0.0"
 
         # assign the reference atoms for N > 1 case
         lassign "$aGname $bGname $cGname" A1 A2 A3
@@ -784,6 +792,7 @@ proc ::ForceFieldToolKit::Psi4::write120filesWI { outFolderPath basename aName a
         
         # build / write the zmatrix
         set ref_label [list A1 A2 A3 B1 B2 B3]
+        set ref_val [list $A1 $A2 $A3 $B1 $B2 $B3]
         for {set i 0} {$i < 6} {incr i} {
             set [lindex $ref_label $i] [lindex $ref_val $i]
         }
@@ -802,6 +811,9 @@ proc ::ForceFieldToolKit::Psi4::write120filesWI { outFolderPath basename aName a
 proc ::ForceFieldToolKit::Psi4::write90filesWI { outFolderPath basename aName aInd atom_info aGname bGname cGname qmProc qmMem qmRoute qmCharge qmMult } {
     # writes single point energy files required for charge optimization
     # hard coded for HF/6-31G* and MP2/6-31G*
+
+    # length of $atom_info
+    set len_mol [llength $atom_info]
 
     # open output file
     set outname [file join $outFolderPath ${basename}-ACC-${aName}-ppn.py]
@@ -825,14 +837,20 @@ proc ::ForceFieldToolKit::Psi4::write90filesWI { outFolderPath basename aName aI
     foreach atom_entry $atom_info {
         puts $outfile "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
     }
+    puts $outfile "--"
 
     # write custom zmatrix
+
+    set x [expr $len_mol + 2]
+    set Ow [expr $len_mol + 3]
+    set H1w [expr $len_mol + 1]
+
     puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $bGname 90.0 $cGname 90.0]
     puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
     puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9527 $x 90.00 $aGname 180.00]
     puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9527 $H1w 104.52 $x dih]
-    puts $outfile "rAH  2.0"
-    puts $outfile "dih  0.0"
+    puts $outfile "rAH = 2.0"
+    puts $outfile "dih = 0.0"
 
     # assign the reference atoms for N > 1 case
     lassign "$aGname $bGname $cGname" A1 A2 A3
@@ -840,6 +858,7 @@ proc ::ForceFieldToolKit::Psi4::write90filesWI { outFolderPath basename aName aI
     
     # build / write the zmatrix
     set ref_label [list A1 A2 A3 B1 B2 B3]
+    set ref_val [list $A1 $A2 $A3 $B1 $B2 $B3]
     for {set i 0} {$i < 6} {incr i} {
         set [lindex $ref_label $i] [lindex $ref_val $i]
     }
