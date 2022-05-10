@@ -1204,6 +1204,7 @@ proc ::ForceFieldToolKit::Gaussian::resetDefaultsGenBonded {} {
     set ::ForceFieldToolKit::GenBonded::qmProc 1
     set ::ForceFieldToolKit::GenBonded::qmMem 1
     set ::ForceFieldToolKit::GenBonded::qmRoute "\# MP2/6-31G* Geom=(AllCheck,ModRedundant) Freq NoSymm IOp(7/33=1) SCF=Tight Guess=Read"
+    set ::ForceFieldToolKit::GenBonded::geomCHK ""
 
     # Reset name of output QM file.
     set ::ForceFieldToolKit::GenBonded::com "hess.gau"

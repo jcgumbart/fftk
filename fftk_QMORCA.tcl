@@ -1362,6 +1362,7 @@ proc ::ForceFieldToolKit::ORCA::resetDefaultsGenBonded {} {
     set ::ForceFieldToolKit::GenBonded::qmProc 1
     set ::ForceFieldToolKit::GenBonded::qmMem 1
     set ::ForceFieldToolKit::GenBonded::qmRoute "\! MP2 6-31G* TightSCF opt NumFreq"
+    set ::ForceFieldToolKit::GenBonded::geomCHK ""
 
     # Reset name of output QM file.
     set ::ForceFieldToolKit::GenBonded::com "hess.inp"

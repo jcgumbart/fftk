@@ -84,10 +84,12 @@ proc ::ForceFieldToolKit::GenBonded::sanityCheck { procType } {
             if { $qmRoute eq "" } { lappend errorList "Route card is empty." }
 
             # make sure that geometry CHK is specified and exists
-            if { $geomCHK eq "" } {
-                lappend errorList "Checkpoint file from geometry optimization was not specified."
-            } else {
-                if { ![file exists $geomCHK] } { lappend errorList "Cannot find geometry optimization checkpoint file." }
+            if { $::ForceFieldToolKit::qmSoft != "Psi4" } {
+                if { $geomCHK eq "" } {
+                    lappend errorList "Checkpoint file from geometry optimization was not specified."
+                } else {
+                    if { ![file exists $geomCHK] } { lappend errorList "Cannot find geometry optimization checkpoint file." }
+                }
             }
             
             # make sure that com file is specified and output dir is writable

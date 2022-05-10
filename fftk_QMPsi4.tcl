@@ -1382,21 +1382,10 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
     #===========================================================================================================
 
     proc ::ForceFieldToolKit::Psi4::WriteComFile_GenBonded { geomCHK com qmProc qmMem qmRoute qmCharge qmMult psf pdb lbThresh } {
-        # Check if a file with .chk extension was given
-        set fext [file extension $geomCHK]
-        if { $fext ne ".chk" } {
-            tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "File has not a \".chk\" extension. It might not be a Psi4 Checkpoint File."
-            return
-        }
-
         # load the molecule psf/pdb to get the internal coordinates
         set logID [::ForceFieldToolKit::SharedFcns::LonePair::loadMolExcludeLP $psf $pdb]
         ::QMtool::use_vmd_molecule $logID
         set zmat [::QMtool::modredundant_zmat]
-
-        # make a copy of the CHK file to prevent Psi4 from overwriting the original
-        set newCHKname "[file rootname $com].chk"
-        file copy $geomCHK $newCHKname
 
         # assign atom names and gather x,y,z for the output file
         set atom_info {}
@@ -1509,7 +1498,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         puts $outfile ""
 
         puts $outfile "# Optimize and extract information, inc. final geometry"
-        puts $outfile "json_output = optking.optimize_psi4(\'MP2\')"
+        puts $outfile "json_output = optking.optimize_psi4(\'$qmRoute\')"
         puts $outfile "E = json_output\[\'energies\']\[-1]"
         puts $outfile "print(f\"Optimized Energy: {E}\")"
         puts $outfile "xyz_array = np.array(json_output\[\'final_molecule\']\[\'geometry\'])"
@@ -1536,7 +1525,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         puts $outfile ""
 
         puts $outfile "# Compute the Cartesian Hessian with psi4"
-        puts $outfile "Hxyz = psi4.hessian(\'MP2\') # returns a psi4 matrix"
+        puts $outfile "Hxyz = psi4.hessian(\'$qmRoute\') # returns a psi4 matrix"
         puts $outfile "print(\'Cartesian hessian\')"
         puts $outfile "# print(Hxyz.to_array())"
         puts $outfile ""
@@ -1675,6 +1664,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         set asktypeList 1
         set typeList [ zmatqm_BondAngleOpt $debug $debugLog $hessLogID $hessLog $asktypeList ]
 
+        # TODO: check with Psi4 guys what unit is the hessian output
         # convert hess from hartree*bohr2 to kcal*A2
         for { set i 0 } { $i < [llength $hess] } { incr i } {
             set rowdata [lindex $hess $i]
@@ -1695,6 +1685,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         set ::ForceFieldToolKit::GenBonded::qmProc 1
         set ::ForceFieldToolKit::GenBonded::qmMem 1
         set ::ForceFieldToolKit::GenBonded::qmRoute "MP2"
+        set ::ForceFieldToolKit::GenBonded::geomCHK "== not needed =="
 
         # Reset name of output QM file.
         set ::ForceFieldToolKit::GenBonded::com "hess.py"
