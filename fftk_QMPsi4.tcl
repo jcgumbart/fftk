@@ -1247,35 +1247,60 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
 
         set file [open $gau w]
 
+        # Follow the original ffTK GUI and only calculate ESP in this button
         puts $file "import psi4"
-        puts $file "import resp"
         puts $file ""
+        puts $file "psi4.set_memory(\"$qmMem GB\")"
+        puts $file "psi4.set_num_threads($qmProc)"
+        puts $file "psi4.set_output_file(\"prld-resp.out\", False)"
         puts $file "mol = psi4.geometry(\"\"\""
-        puts $file "$qm"
-        # write the cartesian coords for the molecule
+        puts $file "$qmCharge $qmMult"
         foreach atom_entry $atom_info {
-            puts $file "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+        puts $file "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
         }
         puts $file "    \"\"\")"
         puts $file "mol.update_geometry()"
         puts $file ""
-        puts $file "# First stage RESP fit"
-        puts $file "options = { 'RESP_A' : 0.0005,"
-        puts $file "            'RESB_B' : 0.1,"
-        puts $file "            'METHOD_ESP': 'scf',"
-        puts $file "            'BASIS_ESP' : '$qmRoute'}"
+        puts $file "psi4_options = {"
+        puts $file "    \"cubeprop_tasks\": \[\"esp\"]"
+        puts $file "}"
+        puts $file "psi4.set_options(psi4_options)"
         puts $file ""
-        puts $file "charges_1 = resp.resp(\[mol], options)"
-        puts $file ""
-        puts $file "# Second stage RESP fit"
-        puts $file "# By default, H atoms connected to the same C are contrained to be indentical."
-        puts $file "resp.set_stage2_constraint(mol, charges_1\[1], options)"
-        puts $file "charges_2 = resp.resp(\[mol], options)"
-        puts $file ""
-        puts $file "# Get RESP charges"
-        puts $file "print(\"\\nStage Two:\\n\")"
-        puts $file "print('RESP Charges')"
-        puts $file "print(charges_2\[1])"
+        puts $file "E, wfn = psi4.energy('hf/6-31G*', return_wfn=True)"
+        puts $file "psi4.cubeprop(wfn)"
+
+
+        # The following code will calculate the charges directly. That might require modify fftk GUI
+        # puts $file "import psi4"
+        # puts $file "import resp"
+        # puts $file ""
+        # puts $file "mol = psi4.geometry(\"\"\""
+        # puts $file "$qmCharge $qmMulti"
+        # # write the cartesian coords for the molecule
+        # foreach atom_entry $atom_info {
+        #     puts $file "[lindex $atom_entry 0] [lindex $atom_entry 1] [lindex $atom_entry 2] [lindex $atom_entry 3]"
+        # }
+        # puts $file "    \"\"\")"
+        # puts $file "mol.update_geometry()"
+        # puts $file ""
+        # puts $file "# First stage RESP fit"
+        # puts $file "options = { 'RESP_A' : 0.0005,"
+        # puts $file "            'RESB_B' : 0.1,"
+        # puts $file "            'METHOD_ESP': 'scf',"
+        # puts $file "            'BASIS_ESP' : '$qmRoute'}"
+        # puts $file ""
+        # puts $file "charges_1 = resp.resp(\[mol], options)"
+        # puts $file ""
+        # puts $file "# Second stage RESP fit"
+        # puts $file "# By default, H atoms connected to the same C are contrained to be indentical."
+        # puts $file "resp.set_stage2_constraint(mol, charges_1\[1], options)"
+        # puts $file "charges_2 = resp.resp(\[mol], options)"
+        # puts $file ""
+        # puts $file "# Get RESP charges"
+        # puts $file "print(\"\\nStage Two:\\n\")"
+        # puts $file "print('RESP Charges')"
+        # puts $file "print(charges_2\[1])"
+
         close $file
     }
     #===========================================================================================================
@@ -1293,75 +1318,64 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
 
         set logFile [open $gauLog r]
 
-        # read the number of atoms
-        while { [lindex [set line [string map { \" {} } [gets $logFile]] ] 0] ne "NAtoms=" } {
-            continue
+        ########################
+        # burn the header
+        gets $logFile 
+        gets $logFile
+
+        # read the number of atoms and xmin, ymin, zmin
+        set line [string trim [gets $logFile]]
+        lassign $line nAtoms xmin ymin zmin
+
+        # read the nxmax, nymax, nzmax, and the step size dx, dy, dz
+        set line [string trim [gets $logFile]]
+        lassign $line nxmax dx zero zero
+        set line [string trim [gets $logFile]]
+        lassign $line nymax zero dy zero
+        set line [string trim [gets $logFile]]
+        lassign $line nzmax zero zero dz
+
+        # the second number is the same as the nFitCenters in Gaussian
+        puts $datFile "$nAtoms [expr $nxmax*$nymax*$nzmax]"  
+
+        # read the atoms' coordinates and write to the dat file
+        for {set i 0} {$i < $nAtoms} {incr i} {
+            set line [string trim [gets $logFile]]
+            # should I add format?
+            puts $datFile "       [lindex $line 2] [lindex $line 3] [lindex $line 4]"
         }
 
-        set nAtoms [lindex $line 1]
+        # write to the dat file ESP values. The format is like "$ESP $x $y $z"
+        # # let i be the line number, starting from 0
+        # set i 0
+        lassign {0 0 -1} nx ny nz
+        while {![eof $logFile]} {
+            set inLine [string trim [gets $logFile]]
 
-        # read the number of fit centers
-        while { [lrange [set line  [gets $logFile]] 1 8] ne "points will be used for fitting atomic charges" } {
-            continue
+            foreach ele $inLine {
+                incr nz
+                if {$nz == $nzmax} {
+                    set nz 0
+                    incr ny
+                    if {$ny == $nymax} {
+                        set ny 0
+                        incr nx
+                        if {$nx == $nxmax} {
+                            # fail
+                        }
+                    }
+                }
+                set x [expr $xmin + $nx*$dx]
+                set y [expr $ymin + $ny*$dy]
+                set z [expr $zmin + $nz*$dz]
+                puts $datFile "$ele $x $y $z"
+            }
+            
+            if {$nx != [expr $nxmax - 1] || $ny != [expr $nymax - 1] || $nz != [expr $nzmax - 1]} {
+                # fail
+            }
         }
 
-        set nFitCenters [lindex $line 0]
-
-        puts $datFile "  $nAtoms  $nFitCenters"
-
-        # go back to the beginning of the .log file
-        seek $logFile 0
-
-        # read the Atom Fit Centers
-        while { [lrange [set line [string map { \" {} } [gets $logFile]]] 0 1] ne "Atomic Center" } {
-            continue
-        }
-        set formatStr "                   %s   %s   %s"
-        # set temp [format $formatStr [lindex $line 5] [lindex $line 6] [lindex $line 7]]
-        puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 5] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]]]
-        while { [lrange [set line [gets $logFile]] 0 1] eq "Atomic Center" } {
-            puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 5] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]]]
-            continue
-        }
-
-        # go back to the beginning of the .log file
-        seek $logFile 0
-
-        # read the fit values
-        while { [lrange [set line [string map { \" {} } [gets $logFile]]] 0 3] ne "Electrostatic Properties (Atomic Units)" } {
-            continue
-        }
-        # G09 Revision B does not give the fit values, so there must be a way to check this at this point of the code and give an error.
-        # Otherwise the code will loop forever.
-        while { [lindex [set line [gets $logFile]] 1] ne "Fit" && ![eof $logFile] } {
-            continue
-        }
-        if { [eof $logFile] } {
-            tk_messageBox -type ok -icon warning -message "Action halted on error!" -detail "Cannot find fitting values in log file. This may happen because you are using g09 revision B. Try to use a later version."
-            return
-        }
-        lappend fitValue [lindex $line 2]
-        while { [lindex [set line [gets $logFile]] 1] eq "Fit" } {
-            lappend fitValue [lindex $line 2]
-            continue
-        }
-
-        # go back to the beginning of the .log file
-        seek $logFile 0
-
-        # write formatted fit values to the data file
-        while { [lrange [set line [string map { \" {} } [gets $logFile]]] 0 2] ne "ESP Fit Center" } {
-            continue
-        }
-        set formatStr "   %s   %s   %s"
-        puts -nonewline $datFile [format "   %s" [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [lindex $fitValue 0]]]
-        puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 8] / $auScale]]]
-        while { [lrange [set line [gets $logFile]] 0 2] eq "ESP Fit Center" } {
-            puts -nonewline $datFile [format "   %s" [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [lindex $fitValue $count]]]
-            puts $datFile [format $formatStr [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 6] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 7] / $auScale]] [::ForceFieldToolKit::ChargeOpt::ESP::formatRESP [expr [lindex $line 8] / $auScale]]]
-            incr count
-            continue
-        }
         close $logFile
         close $datFile
     }
