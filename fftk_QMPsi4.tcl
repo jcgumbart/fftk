@@ -581,7 +581,7 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile "    \"Natoms per frag\": \[$len_mol, 3\],"
     puts $outfile {    "A Frag": 1,}
     puts $outfile "    \"A Ref Atoms\": \[\[$A1\], \[$A2\], \[$A3\]\],"
-    puts $outfile {    "A Label": "PRLD",}
+    puts $outfile {    "A Label": "Molecule",}
     puts $outfile {    "B Frag": 2,}
     puts $outfile "    \"B Ref Atoms\": \[\[$B1\], \[$B2\], \[$B3\]\],"
     puts $outfile {    "B Label": "Water",}

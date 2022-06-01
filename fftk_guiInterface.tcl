@@ -2708,7 +2708,7 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::entry $cesp.io.gau -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::gau -width 44
     ttk::button $cesp.io.gauSaveAs -text "SaveAs" \
         -command {
-            set tempfile [tk_getSaveFile -title "Save the QM Input File As..." -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension {.gau}]
+            set tempfile [tk_getSaveFile -title "Save the QM Input File As..." -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension $::ForceFieldToolKit::scriptExt]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::ChargeOpt::ESP::gau $tempfile }
         }
 
@@ -3356,7 +3356,7 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::entry $genbonded.hess.com -textvariable ::ForceFieldToolKit::GenBonded::com
     ttk::button $genbonded.hess.comSaveAs -text "SaveAs" \
         -command {
-            set tempfile [tk_getSaveFile -title "Save QM Input File As..." -initialfile "$::ForceFieldToolKit::GenBonded::com" -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension {.gau}]
+            set tempfile [tk_getSaveFile -title "Save QM Input File As..." -initialfile "$::ForceFieldToolKit::GenBonded::com" -filetypes $::ForceFieldToolKit::gui::AllInpType -defaultextension $::ForceFieldToolKit::scriptExt]
             if {![string eq $tempfile ""]} { set ::ForceFieldToolKit::GenBonded::com $tempfile }
         }
 
