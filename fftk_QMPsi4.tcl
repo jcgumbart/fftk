@@ -1336,18 +1336,18 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         lassign $line nzmax zero zero dz
 
         # the second number is the same as the nFitCenters in Gaussian
-        puts $datFile "$nAtoms [expr $nxmax*$nymax*$nzmax]"  
+        puts $datFile "  $nAtoms [expr $nxmax*$nymax*$nzmax]"  
 
+        set formatStr "                  %14.6E %14.6E %14.6E"
+        
         # read the atoms' coordinates and write to the dat file
         for {set i 0} {$i < $nAtoms} {incr i} {
             set line [string trim [gets $logFile]]
-            # should I add format?
-            puts $datFile "       [lindex $line 2] [lindex $line 3] [lindex $line 4]"
+            puts $datFile "[format $formatStr [lindex $line 2] [lindex $line 3] [lindex $line 4]]"
         }
 
         # write to the dat file ESP values. The format is like "$ESP $x $y $z"
-        # # let i be the line number, starting from 0
-        # set i 0
+        set formatStr "   %14.6E %14.6E %14.6E %14.6E"
         lassign {0 0 -1} nx ny nz
         while {![eof $logFile]} {
             set inLine [string trim [gets $logFile]]
@@ -1368,7 +1368,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 set x [expr $xmin + $nx*$dx]
                 set y [expr $ymin + $ny*$dy]
                 set z [expr $zmin + $nz*$dz]
-                puts $datFile "$ele $x $y $z"
+                puts $datFile "[format $formatStr $ele $x $y $z]"
             }
             
             if {$nx != [expr $nxmax - 1] || $ny != [expr $nymax - 1] || $nz != [expr $nzmax - 1]} {
