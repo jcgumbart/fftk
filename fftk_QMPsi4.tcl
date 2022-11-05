@@ -591,6 +591,7 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
 
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
+    puts $outfile "molecule.print_out_in_angstrom()"
     puts $outfile {psi4.core.clean_options()}
     puts $outfile "psi4_options = {"
     puts $outfile {    "basis": "6-31G*",}
@@ -606,14 +607,14 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile {xyzs = result["final_molecule"]["geometry"]}
     puts $outfile {xyzs = np.array(xyzs)}
     puts $outfile {xyzs = np.reshape(xyzs, (-1,3))}
-    puts $outfile {# coords are zero-indexed here:}
+    puts $outfile {molecule.set_geometry(psi4.core.Matrix.from_array(xyzs))
+    puts $outfile {molecule.print_out_in_angstrom()}
+    
+    puts $outfile "# coords are zero-indexed here:"
     puts $outfile "# rAH = qcel.util.measure_coordinates(xyzs, $A1, $B1, True) # in bohr"
     puts $outfile "# dih = qcel.util.measure_coordinates(xyzs, \[...\], True) # in degrees   # dih does not exist in every case"
-    puts $outfile ""
-
-    puts $outfile {# bohr_to_ang = qcel.constants.conversion_factor("bohr", "angstrom")}
-    puts $outfile {# print(rAH * bohr_to_ang)}
-    puts $outfile {# print(dih)}
+    puts $outfile "# print(rAH * bohr_to_ang)"
+    puts $outfile "# print(dih)"
 }
 #===========================================================================================================
 proc ::ForceFieldToolKit::Psi4::placeProbe { aSel } {
@@ -907,7 +908,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize(\"HF/6-31G*\", molecule=molecule)"
+    puts $outfile "psi4.energy(\"HF/6-31G*\", molecule=molecule)"
 
     puts $outfile ""
     close $outfile
@@ -933,7 +934,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize(\"MP2/6-31G*\", molecule=molecule)"
+    puts $outfile "psi4.energy(\"MP2/6-31G*\", molecule=molecule)"
 
     puts $outfile ""
     close $outfile
@@ -955,7 +956,7 @@ proc ::ForceFieldToolKit::Psi4::writeSPfilesWI { outFolderPath basename qmProc q
     puts $outfile ""
     puts $outfile "molecule.set_multiplicity($qmMult)"
     puts $outfile "molecule.set_molecular_charge($qmCharge)"
-    puts $outfile "psi4.optimize(\"HF/6-31G*\", molecule=molecule)   #RHF HF"
+    puts $outfile "psi4.energy(\"HF/6-31G*\", molecule=molecule)   #RHF HF"
     close $outfile
 
 }
@@ -1157,39 +1158,44 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
     proc ::ForceFieldToolKit::Psi4::getDipoleData_ChargeOpt { file } {
 
         set fid [open $file r]
+
+        # in the while loop, they will keep being overwritten until the last step
         while { ![eof $fid] } {
             set inLine [string trim [gets $fid]]
-
-            # define inside the while loop so they can be overwirtten until the last optimization
-            # set coor {}
-            # set qmVec {}
-            # set qmMag {}
-
+            
             if { $inLine eq "==> Geometry <==" } {
                 set coor {}
-
-                # jump to coordinates
-                for {set i 0} {$i < 8} {incr i} {  # burn-in the header
+                # burn-in the header. Jump to coordinates
+                for {set i 0} {$i < 8} {incr i} {
                     gets $fid
                 }
                 # read coordinates
                 while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
                     lappend coor [lrange $inLine 1 3]
                 }
-            } elseif { $inLine eq "Dipole Moment: \[D]" } {
+                
+            } elseif { [lindex $inLine 0] eq "Dipole" } {
+                # Multiply by 2.5417464519 to convert [e a0] to [Debye]
+                set qmVec [expr [lindex $inLine 5] * 2.5417464519]
+                for {set i 0} {$i < 2} {incr i} {
+                    set inLine [string trim [gets $fid]]
+                    lappend qmVec [expr [lindex $inLine 5] * 2.5417464519]
+                    puts $qmVec
+                }   
+                
+                # After reading the x, y, and z components, read the magnitude
                 set inLine [string trim [gets $fid]]
-                set qmVec [list [lindex $inLine 1] [lindex $inLine 3] [lindex $inLine 5]]
-                set qmMag [lindex $inLine 7]
+                set qmMag [expr [lindex $inLine 2] * 2.5417464519]
+                
             } else {
                 continue
-            }
-        }
-
+            }   
+        }   
         # we're done with the output file
         unset inLine
         close $fid
+        return [list $coor $qmVec $qmMag]   
 
-        return [list $coor $qmVec $qmMag]
     }
 
     #======================================================
@@ -1515,9 +1521,12 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         puts $outfile "json_output = optking.optimize_psi4(\'$qmRoute\')"
         puts $outfile "E = json_output\[\'energies\']\[-1]"
         puts $outfile "print(f\"Optimized Energy: {E}\")"
+
         puts $outfile "xyz_array = np.array(json_output\[\'final_molecule\']\[\'geometry\'])"
         puts $outfile "xyz = xyz_array.reshape(mol.natom(), 3)"
-        puts $outfile "mol.set_geometry(psi4.core.Matrix.from_array(xyz))"
+        puts $outfile "mol.set_geometry(psi4.core.Matrix.from_array(xyzs))"
+        puts $outfile "mol.print_out_in_angstrom()"
+
         puts $outfile ""
 
         puts $outfile "optking.optparams.Params = optking.optparams.OptParams({})"
@@ -1789,14 +1798,21 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 puts $outfile {        'geom_maxiter': 100,}
                 puts $outfile {        'dynamic_level': 1,}
                 puts $outfile "        }"
-                puts $outfile "    psi4.set_options(options)"
+                puts $outfile {    psi4.set_options(options)}
                 puts $outfile {    json_output = optking.optimize_psi4("mp2", **fixD)}
                 puts $outfile {    E = json_output["energies"][-1]}
-                puts $outfile "    scan.append((dihedral, E))"
+                puts $outfile {    scan.append((dihedral, E))}
                 puts $outfile {    coordinate.append(json_output['trajectory'][-1]['molecule']['geometry'])}
                 puts $outfile "    dihedral += [expr $stepsize*$sign]"
                 puts $outfile ""
-                puts $outfile "print(scan)"
+                puts $outfile {print(scan)}
+
+                puts $outfile {# Can use qcel to output final rAH and dih values}
+                puts $outfile {xyzs = json_output['final_molecule']['geometry']}
+                puts $outfile {xyzs = np.array(xyzs)}
+                puts $outfile {xyzs = np.reshape(xyzs, (-1, 3))}
+                puts $outfile {molecule.set_geometry(psi4.core.Matrix.from_array(xyzs))}
+                puts $outfile {molecule.print_out_in_angstrom()}
 
                 puts $outfile ""
                 puts $outfile {nstep = len(scan)}
