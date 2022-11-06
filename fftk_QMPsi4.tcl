@@ -606,8 +606,8 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile {# Can use qcel to output final rAH and dih values}
     puts $outfile {xyzs = result["final_molecule"]["geometry"]}
     puts $outfile {xyzs = np.array(xyzs)}
-    puts $outfile {xyzs = np.reshape(xyzs, (-1,3))}
-    puts $outfile {molecule.set_geometry(psi4.core.Matrix.from_array(xyzs))
+    puts $outfile {xyzs = np.reshape(xyzs, (-1, 3))}
+    puts $outfile {molecule.set_geometry(psi4.core.Matrix.from_array(xyzs))}
     puts $outfile {molecule.print_out_in_angstrom()}
     
     puts $outfile "# coords are zero-indexed here:"
