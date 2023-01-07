@@ -1097,7 +1097,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 }
                 # read coordinates
                 while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
-                    lappend coordlist [lrange $inLine 1 3]
+                    lappend coordlist [vecscale 0.529177 [lrange $inLine 1 3]]
                 }
             } else {
                 continue
@@ -1128,7 +1128,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 # read coordinates
                 while { [regexp {[A-Z]} [set inLine [string trim [gets $fid]]]] } {
                     lappend atomnames [lindex $inLine 0]
-                    lappend coordlist [lrange $inLine 1 3]
+                    lappend coordlist [vecscale 0.529177 [lrange $inLine 1 3]]
                 }
             } else {
                 continue
@@ -1524,6 +1524,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
 
         puts $outfile "xyz_array = np.array(json_output\[\'final_molecule\']\[\'geometry\'])"
         puts $outfile "xyz = xyz_array.reshape(mol.natom(), 3)"
+        puts $outfile "xyz *= 0.529177"
         puts $outfile "mol.set_geometry(psi4.core.Matrix.from_array(xyzs))"
         puts $outfile "mol.print_out_in_angstrom()"
 
@@ -1570,7 +1571,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         puts $outfile "    file.write(\"{:5} {:15} {:20} \\n\".format('type', 'indices', 'ANG(DEG)'))"
         puts $outfile "    for frag in OptMol.fragments:"
         puts $outfile "        for i in range(len(frag.intcos)):"
-        puts $outfile "            indices = str(frag.intcos\[i])\[3:-1].split(',')   # the indices goes like ' R(1,2)', ' D(1,2,3,4)', etc."
+        puts $outfile "            indices = str(frag.intcos\[i])\[3:-1].split(',')   # the indices go like ' R(1,2)', ' D(1,2,3,4)', etc."
         puts $outfile "            indices_zero = ''"
         puts $outfile "            for idx in indices:"
         puts $outfile "                indices_zero += str(int(idx) - 1) + ','"
@@ -1690,10 +1691,14 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         # TODO: check with Psi4 guys what unit is the hessian output
         # convert hess from hartree*bohr2 to kcal*A2
         for { set i 0 } { $i < [llength $hess] } { incr i } {
+            set dim1 1
+            if { [lindex $typeList $i] eq "R" } { set dim1 0.529177249 }
             set rowdata [lindex $hess $i]
             set rowdata_kcal {}
             for { set j 0 } { $j < [llength $rowdata] } { incr j } {
-                set kcal_data [expr { [lindex $rowdata $j]*0.5*1.041308e-21*6.02214e23*0.943*0.943 }]
+                set dim2 1
+                if { [lindex $typeList $j] eq "R" } { set dim2 0.529177249 }
+                set kcal_data [expr { [lindex $rowdata $j]*0.5*1.041308e-21*6.02214e23*0.943*0.943/($dim1*$dim2) }]
                 lappend rowdata_kcal $kcal_data
             }
             lappend inthessian_kcal $rowdata_kcal
