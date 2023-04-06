@@ -1784,6 +1784,7 @@ proc ::ForceFieldToolKit::DihOpt::parseGlog { inputFiles { debug 0 } { debugLog 
         set tempGlogData [ ::ForceFieldToolKit::${qmSoft}::parseGlog_DihOpt $debug $debugLog $GlogFile ] 
 
         foreach ele $tempGlogData { lappend GlogData $ele }
+        puts "reach DihOpt::parseGlog and calls ${qmSoft}::parseGlog_DihOpt"
 
         incr currLogNum
 

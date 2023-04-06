@@ -1767,6 +1767,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 puts $outfile "import psi4"
                 puts $outfile "import qcelemental as qcel"
                 puts $outfile "import optking"
+                puts $outfile ""
                 puts $outfile "psi4.set_memory(\'$qmMem GB\')"
                 puts $outfile "psi4.set_num_threads($qmProc)"
                 if {$sign == 1} {
@@ -1786,44 +1787,51 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
 
                 puts $outfile ""
                 puts $outfile "xyzs = mol.geometry().np"
-                puts $outfile "dihedral = qcel.util.measure_coordinates(xyzs, \[[lindex $zeroInds 0], [lindex $zeroInds 1], [lindex $zeroInds 2], [lindex $zeroInds 3]\], True)"
+                puts $outfile ""
+                puts $outfile "# Coordinates are zero-indexed here"
+                puts $outfile "dihedral = qcel.util.measure_coordinates(xyzs, \[[lindex $zeroInds 0], [lindex $zeroInds 1], [lindex $zeroInds 2], [lindex $zeroInds 3]], True)"
 
                 puts $outfile ""
-                puts $outfile "scan = \[\]"
-                puts $outfile "coordinate = \[\]"
-
+                puts $outfile "scan = \[]"
+                puts $outfile "coordinate = \[]"
+                puts $outfile "indices = '[lindex $zeroInds 0] [lindex $zeroInds 1] [lindex $zeroInds 2] [lindex $zeroInds 3]'"
                 puts $outfile ""
+
                 set stepsize [lindex $dih 2]
-                set step [expr int([expr [lindex $dih 1]/$stepsize/2]) + 1]
-                puts $outfile "for i in range(0, $step):"
+                set step [expr int([expr [lindex $dih 1]/$stepsize]) + 1]
+                puts $outfile "step = $step"
+                puts $outfile "for i in range(0, step):"
                 puts $outfile "    fixD = {\"ranged_dihedral\": \"($oneInds \" + str(dihedral) + \" \" + str(dihedral) + \")\"}"
                 puts $outfile "    options = {"
                 puts $outfile {        'basis': '6-31g*',}
                 puts $outfile {        'mp2_type': 'df',}
                 puts $outfile {        'geom_maxiter': 100,}
-                puts $outfile {        'dynamic_level': 1,}
+                puts $outfile {        'dynamic_level': 0,}
+                puts $outfile {        'intrafrag_step_limit_min': 0.3,}
+                puts $outfile {        'intrafrag_step_limit_max': 0.3,}
+                puts $outfile {        'hess_update': 'bofill',}
+                puts $outfile {        'hess_update_use_last': 3}
                 puts $outfile "        }"
                 puts $outfile {    psi4.set_options(options)}
-                puts $outfile {    json_output = optking.optimize_psi4("mp2", **fixD)}
-                puts $outfile {    E = json_output["energies"][-1]}
-                puts $outfile {    scan.append((dihedral, E))}
-                puts $outfile {    coordinate.append(json_output['trajectory'][-1]['molecule']['geometry'])}
+                puts $outfile "    json_output = optking.optimize_psi4('$qmRoute', **fixD)"
+                puts $outfile {    opt_E = json_output["energies"][-1]}
+                puts $outfile ""
+                puts $outfile {    final_mol_qcschema = json_output["final_molecule"]}
+                puts $outfile {    final_mol = psi4.core.Molecule.from_schema(final_mol_qcschema)}
+                puts $outfile {    psi4.core.set_active_molecule(final_mol)}
+                puts $outfile ""
+                puts $outfile {    xyzs = final_mol.geometry().np}
+                puts $outfile "    opt_dihedral = qcel.util.measure_coordinates(xyzs, \[[lindex $zeroInds 0], [lindex $zeroInds 1], [lindex $zeroInds 2], [lindex $zeroInds 3]\], True)"
+                puts $outfile ""
+                puts $outfile "    # *627.503 to convert the energy unit from Hartree to kcal/mol"
+                puts $outfile "    scan.append((opt_dihedral, opt_E*627.503))"
+                puts $outfile "    # *0.529177 to convert from Bohr to Angstrom"
+                puts $outfile "    coordinate.append(xyzs*0.529177)"
                 puts $outfile "    dihedral += [expr $stepsize*$sign]"
                 puts $outfile ""
-                puts $outfile {print(scan)}
-
-                puts $outfile {# Can use qcel to output final rAH and dih values}
-                puts $outfile {xyzs = json_output['final_molecule']['geometry']}
-                puts $outfile {xyzs = np.array(xyzs)}
-                puts $outfile {xyzs = np.reshape(xyzs, (-1, 3))}
-                puts $outfile {molecule.set_geometry(psi4.core.Matrix.from_array(xyzs))}
-                puts $outfile {molecule.print_out_in_angstrom()}
-
-                puts $outfile ""
-                puts $outfile {nstep = len(scan)}
-                puts $outfile "indices = '[lindex $zeroInds 0] [lindex $zeroInds 1] [lindex $zeroInds 2] [lindex $zeroInds 3]'"
-                puts $outfile {energy = json_output["energies"]}
-
+                puts $outfile {print("%8s%20s" % ('phi(CCCN)','E'))}
+                puts $outfile {for s in scan:}
+                puts $outfile {    print("%8.2f%20.10f" % tuple(s))}
                 puts $outfile ""
 
                 puts $outfile {# use indices to write the indices, scan to write energies and dihedrals, and trajectory to write the coordinates}
@@ -1832,30 +1840,30 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 puts $outfile {    # write the indices}
                 puts $outfile {    f.write("Psi4 \n")}
                 puts $outfile {    f.write("indices \n")}
-                puts $outfile {    for i in range(nstep):}
+                puts $outfile {    for i in range(step):}
                 puts $outfile {        f.write(indices + "\n")}
                 puts $outfile {    f.write("end indices \n")}
 
                 puts $outfile {    # write the dihedrals}
                 puts $outfile {    f.write("dihedrals \n")}
-                puts $outfile {    for i in range(nstep):}
+                puts $outfile {    for i in range(step):}
                 puts $outfile {        f.write(str(scan[i][0]) + "\n")}
                 puts $outfile {    f.write("end dihedrals \n")}
 
                 puts $outfile {    # write the energies}
-                puts $outfile {    f.write("energies \n")}
-                puts $outfile {    for i in range(nstep):}
+                puts $outfile {    f.write("energies (kcal/mol)\n")}
+                puts $outfile {    for i in range(step):}
                 puts $outfile {        f.write(str(scan[i][1]) + "\n")}
                 puts $outfile {    f.write("end energies \n")}
 
                 puts $outfile {    # write the coordinates}
                 puts $outfile {    f.write("coordinates \n")}
-                puts $outfile {    for i in range(nstep):}
+                puts $outfile {    for i in range(step):}
                 puts $outfile {        s = ""}
-                puts $outfile {        for j in range(len(coordinate[i])//3):}
+                puts $outfile {        for j in range(coordinate[i].shape[0]):}
                 puts $outfile "            s += \"{\""
                 puts $outfile {            for k in range(3):}
-                puts $outfile {                s += str(coordinate[i][3*j + k]) + " "}
+                puts $outfile {                s += str(coordinate[i][j][k]) + " "}
                 puts $outfile "            s += \"} \""
                 puts $outfile {        f.write(s + "\n")}
                 puts $outfile {    f.write("end coordinates \n")}
@@ -1972,8 +1980,8 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
             }; # end of line parse (switch)
         }; # end of cycling through Glog lines (while)
 
-        # for {set i 0} {$i < [llength $scanDihInds]} {incr i}
-        for {set i 0} {$i < 3} {incr i} {
+        # for {set i 0} {$i < 3} {incr i} {}
+        for {set i 0} {$i < [llength $scanDihInds]} {incr i} {
             set ltmp [list [lindex $scanDihInds $i] [lindex $currDihVal $i] [lindex $currEnergy $i] [lindex $currCoords $i]]
             lappend tmpGlogData $ltmp
         }
@@ -2001,7 +2009,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         set ::ForceFieldToolKit::GenDihScan::qmCharge 0
         set ::ForceFieldToolKit::GenDihScan::qmMem 1
         set ::ForceFieldToolKit::GenDihScan::qmMult 1
-        set ::ForceFieldToolKit::GenDihScan::qmRoute {mp2 6-31g*}
+        set ::ForceFieldToolKit::GenDihScan::qmRoute {mp2/6-31g*}
 
     }
     #===========================================================================================================
