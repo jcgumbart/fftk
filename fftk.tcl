@@ -1,5 +1,5 @@
 #
-# $Id: fftk.tcl,v 1.16 2020/09/01 16:55:13 johns Exp $
+# $Id: fftk.tcl,v 1.17 2024/01/11 23:29:55 gumbart Exp $
 #
 #==============================================================================
 # Force Field ToolKit (ffTk) and GUI
@@ -34,7 +34,7 @@
 
 
 # package provide statement
-package provide forcefieldtoolkit 2.1
+package provide forcefieldtoolkit 2.2
 
 # package requirements
 package require exectool

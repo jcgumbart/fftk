@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GeomOpt.tcl,v 1.11 2020/09/01 16:55:13 johns Exp $
+# $Id: fftk_GeomOpt.tcl,v 1.12 2024/01/11 23:29:55 gumbart Exp $
 #
 
 #======================================================
@@ -9,8 +9,8 @@ namespace eval ::ForceFieldToolKit::GeomOpt:: {
     variable pdb
     variable com
     
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmRoute
@@ -28,8 +28,8 @@ proc ::ForceFieldToolKit::GeomOpt::init {} {
     variable pdb
     variable com
     
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmRoute
@@ -62,8 +62,8 @@ proc ::ForceFieldToolKit::GeomOpt::sanityCheck {} {
     variable pdb
     variable com
     
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmRoute
@@ -131,8 +131,8 @@ proc ::ForceFieldToolKit::GeomOpt::writeComFile {} {
     variable psf
     variable pdb
     variable com
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmRoute

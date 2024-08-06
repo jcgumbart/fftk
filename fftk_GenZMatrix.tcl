@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenZMatrix.tcl,v 1.17 2020/09/01 16:55:13 johns Exp $
+# $Id: fftk_GenZMatrix.tcl,v 1.18 2024/01/11 23:29:55 gumbart Exp $
 #
 #======================================================
 namespace eval ::ForceFieldToolKit::GenZMatrix:: {
@@ -15,8 +15,8 @@ namespace eval ::ForceFieldToolKit::GenZMatrix:: {
     variable vizSpheresDon
     variable vizSpheresAcc
     
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
     variable qmCharge
     variable qmMult
@@ -37,8 +37,8 @@ proc ::ForceFieldToolKit::GenZMatrix::init {} {
     variable accList
 
     # QM Input File Variables   
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
     variable qmCharge
     variable qmMult
@@ -72,8 +72,8 @@ proc ::ForceFieldToolKit::GenZMatrix::sanityCheck {} {
     variable donList
     variable accList
     
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
     variable qmCharge
     variable qmMult
@@ -155,8 +155,8 @@ proc ::ForceFieldToolKit::GenZMatrix::genZmatrix {} {
     variable basename
     variable donList
     variable accList
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
     variable qmCharge
     variable qmMult
@@ -182,12 +182,12 @@ proc ::ForceFieldToolKit::GenZMatrix::writeExceptionZMats { aName aInd gnames at
 	# localize some required variables
 	variable outFolderPath
 	variable basename
-	variable qmProc
-	variable qmMem
+	set qmProc $::ForceFieldToolKit::Configuration::qmProc
+	set qmMem $::ForceFieldToolKit::Configuration::qmMem
 	variable qmRoute
 	variable qmCharge
 	variable qmMult
-        variable qmSoft $::ForceFieldToolKit::qmSoft
+	variable qmSoft $::ForceFieldToolKit::qmSoft
 
 	# lookup info from atoms A and B
 	set aSel [atomselect top "index $aInd"]
@@ -244,8 +244,8 @@ proc ::ForceFieldToolKit::GenZMatrix::writeSPfiles {} {
     set pdbPath $::ForceFieldToolKit::Configuration::geomOptPDB
     variable outFolderPath
     variable basename
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmSoft $::ForceFieldToolKit::qmSoft

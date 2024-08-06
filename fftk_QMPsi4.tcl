@@ -13,8 +13,8 @@ proc ::ForceFieldToolKit::Psi4::resetDefaultsGeomOpt {} {
     # resets the Psi4 settings to default
 
     # reset to default
-    set ::ForceFieldToolKit::GeomOpt::qmProc 1
-    set ::ForceFieldToolKit::GeomOpt::qmMem 1
+    set ::ForceFieldToolKit::Configuration::qmProc 1
+    set ::ForceFieldToolKit::Configuration::qmMem 1
     set ::ForceFieldToolKit::GeomOpt::qmCharge 0
     set ::ForceFieldToolKit::GeomOpt::qmMult 1
     set ::ForceFieldToolKit::GeomOpt::qmRoute "mp2/6-31G*"
@@ -327,10 +327,6 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
             $bSel delete
         }
 
-        # define x and Ow as the indices (start from 1) of the dummy atom and O, respectively
-        set x [expr $len_mol + 1]
-        set Ow [expr $len_mol + 2]
-
         if { $diatomic || $linear } {
             puts "reach diatomic or linear"
             # if either diatomic or linear, build a zmatrix for a 1D scan
@@ -357,6 +353,12 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
                 set xPos [vecadd $v2 [measure center $aSel]]
             }
 
+            # define index of dummy and water atoms
+            set x   [expr $len_mol + 1]
+            set Ow  [expr $len_mol + 2]
+            set H1w [expr $len_mol + 3]
+            set H2w [expr $len_mol + 4]
+
             # positioning of x is the same for donors and acceptors
             if { $diatomic } {
                 puts $outfile [format "%3s  %7s  %6s  %7s  %6s" x $aGname 1.0 $bGname 90.00]
@@ -367,15 +369,15 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
             # write the rest of the z-matrix
             if { $class eq "donor" } {
                 # donor
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" O $aGname rAH $x 90.00 $bGname 180.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" H $Ow 0.9572 $aGname 127.74 $x 0.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s"   O $aGname rAH $x 90.00 $bGname 180.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s"   H $Ow 0.9572 $aGname 127.74 $x   0.00]
                 puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
                 puts $outfile "rAH = 2.0"
             } else {
                 # acceptor
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" O $aGname rAH $x 90.00 $bGname 180.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s" H $Ow 0.9572 $aGname 104.52 $x   0.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H $Ow 0.9572 H2w 104.52 $x 0.0]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s"   O $aGname rAH $x 90.00 $bGname 180.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s"   H $Ow 0.9572 $aGname 104.52 $x   0.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s %7s  %6s\n" H $Ow 0.9572 $H2w    104.52 $x   0.0]
                 puts $outfile "rAH = 2.0"
             }
 
@@ -423,11 +425,17 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
             # puts "aGname $aGname bGname $bGname cGname $cGname"
 
             if { $class eq "donor" } {
+                # define index of dummy and water atoms
+                set x   [expr $len_mol + 1]
+                set Ow  [expr $len_mol + 2]
+                set H1w [expr $len_mol + 3]
+                set H2w [expr $len_mol + 4]
+
                 # donor
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $aGname 1.0 $bGname 90.00 $cGname dih]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $aGname rAH $x 90.00 $bGname 180.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $Ow 0.9572 $aGname 127.74 $x 0.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   x $aGname 1.0 $bGname 90.00 $cGname dih]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   O $aGname rAH $x      90.00 $bGname 180.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   H $Ow  0.9572 $aGname 127.74 $x   0.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow  0.9572 $aGname 127.74 $x 180.00]
                 puts $outfile "rAH = 2.0"
                 puts $outfile "dih = 0.0"
 
@@ -443,17 +451,16 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
                 set mAng [::QMtool::bond_angle $probePos [measure center $aSel] [measure center $cSel]]
                 set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $cSel] [measure center $bSel]]
 
-                # need to redefine x and Ow because the dummy atom X is at index $len_mol + 2
-                # and Ow is at index $len_mol + 3 instead
-                # In addition, define H1w as the index of H1w
-                set x [expr {$len_mol + 2}]
-                set Ow [expr {$len_mol + 3}]
-                set H1w [expr {$len_mol + 1}]
+                # define index of dummy and water atoms
+                set H1w [expr $len_mol + 1]
+                set x   [expr $len_mol + 2]
+                set Ow  [expr $len_mol + 3]
+                set H2w [expr $len_mol + 4]
 
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $cGname [format %3.2f $mAng] $bGname [format %3.2f $mDih]]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $cGname 0.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9527 $x 90.00 $aGname 180.00]
-                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9527 $H1w 104.52 $x dih]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   H $aGname rAH $cGname [format %3.2f $mAng] $bGname [format %3.2f $mDih]]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   x $H1w 1.0 $aGname 90.00 $cGname 0.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   O $H1w 0.9527 $x   90.00 $aGname 180.00]
+                puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow  0.9527 $H1w 104.52 $x dih]
                 puts $outfile "rAH = 2.0"
                 puts $outfile "dih = 0.0"
 
@@ -495,47 +502,42 @@ proc ::ForceFieldToolKit::Psi4::writeZmat { aInd class gnames outfile len_mol } 
         set mAng [::QMtool::bond_angle $probePos [measure center $aSel] [measure center $bSel]]
 
         if { !$validC } {
-            puts "reach C is invalid"
-
             # if C is invalid, ABC are linear and we need a second dummy atom in lieu of the original C atom
             set cGname [expr $len_mol + 1]
             set x2Pos [coordtrans [trans center [measure center $aSel] axis [vecsub [measure center $cSel] [measure center $bSel]] 180.0 deg] $probePos]
             set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $bSel] $x2Pos]
             puts $outfile [format "%3s  %.4f  %.4f  %.4f" X [lindex $x2Pos 0] [lindex $x2Pos 1] [lindex $x2Pos 2]]
-
-            # define x, Ow, H1w, and H2w
-            set x [expr $len_mol + 3]
-            set Ow [expr $len_mol + 2]
-            set H1w [expr $len_mol + 4]
-            set H2w [expr $len_mol + 5]
-
         } else {
-            puts "reach C is valid"
-
             # C is valid, we can use it to define the dihedral
             set mDih [::QMtool::dihed_angle $probePos [measure center $aSel] [measure center $bSel] [measure center $cSel]]
-
-            # define x, Ow, H1w, and H2w
-            set x [expr $len_mol + 2]
-            set Ow [expr $len_mol + 3]
-            set H1w [expr $len_mol + 1]
-            set H2w [expr $len_mol + 4]
         }
 
         if { $class eq "donor" } {
+            # define index of dummy and water atoms
+            set Ow  [expr $len_mol + (1-$validC) + 1]
+            set x   [expr $len_mol + (1-$validC) + 2]
+            set H1w [expr $len_mol + (1-$validC) + 3]
+            set H2w [expr $len_mol + (1-$validC) + 4]
+
             # donor
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $Ow 1.0 $aGname 90.00 $bGname dih]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $Ow 0.9572 $aGname 127.74 $x 0.00]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   O $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   x $Ow 1.0    $aGname 90.00 $bGname dih]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   H $Ow 0.9572 $aGname 127.74 $x 0.00]
             puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $aGname 127.74 $x 180.00]
             puts $outfile "rAH = 2.0"
             puts $outfile "dih = 0.0"
         } else {
+            # define index of dummy and water atoms
+            set H1w [expr $len_mol + (1-$validC) + 1]
+            set x   [expr $len_mol + (1-$validC) + 2]
+            set Ow  [expr $len_mol + (1-$validC) + 3]
+            set H2w [expr $len_mol + (1-$validC) + 4]
+
             # acceptor
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" H $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" x $H1w 1.0 $aGname 90.00 $bGname 0.00]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s" O $H1w 0.9572 $x 90.00 $aGname 180.00]
-            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow 0.9572 $H1w 104.52 $x dih]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   H $aGname rAH $bGname [format %3.2f $mAng] $cGname [format %3.2f $mDih]]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   x $H1w 1.0  $aGname 90.00 $bGname 0.00]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s"   O $H1w 0.9572 $x    90.00 $aGname 180.00]
+            puts $outfile [format "%3s  %7s  %6s  %7s  %6s  %7s  %6s\n" H $Ow  0.9572 $H1w 104.52 $x dih]
             puts $outfile "rAH = 2.0"
             puts $outfile "dih = 0.0"
         }
@@ -594,7 +596,7 @@ proc ::ForceFieldToolKit::Psi4::write_optZmat {qmMem qmMult qmCharge qmRoute len
     puts $outfile "molecule.print_out_in_angstrom()"
     puts $outfile {psi4.core.clean_options()}
     puts $outfile "psi4_options = {"
-    puts $outfile {    "basis": "6-31G*",}
+    puts $outfile {    "basis": "",}
     puts $outfile {    "d_convergence": 9,}
     puts $outfile {    "frag_mode": "multi",}
     puts $outfile {    "freeze_intrafrag": 'true',}
@@ -1203,8 +1205,8 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         # resets Psi4 settings to default for water interaction tab
 
         # reset
-        set ::ForceFieldToolKit::GenZMatrix::qmProc 1
-        set ::ForceFieldToolKit::GenZMatrix::qmMem 1
+        set ::ForceFieldToolKit::Configuration::qmProc 1
+        set ::ForceFieldToolKit::Configuration::qmMem 1
         set ::ForceFieldToolKit::GenZMatrix::qmCharge 0
         set ::ForceFieldToolKit::GenZMatrix::qmMult 1
         set ::ForceFieldToolKit::GenZMatrix::qmRoute "HF/6-31G*"
@@ -1272,7 +1274,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         puts $file "}"
         puts $file "psi4.set_options(psi4_options)"
         puts $file ""
-        puts $file "E, wfn = psi4.energy('hf/6-31G*', return_wfn=True)"
+        puts $file "E, wfn = psi4.energy('$qmRoute', return_wfn=True)"
         puts $file "psi4.cubeprop(wfn)"
 
 
@@ -1389,11 +1391,11 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
     proc ::ForceFieldToolKit::Psi4::resetDefaultsESP {} {
 
         # resets the Psi4 Settings to default values
-        set ::ForceFieldToolKit::ChargeOpt::ESP::qmProc 1
-        set ::ForceFieldToolKit::ChargeOpt::ESP::qmMem 1
+        set ::ForceFieldToolKit::Configuration::qmProc 1
+        set ::ForceFieldToolKit::Configuration::qmMem 1
         set ::ForceFieldToolKit::ChargeOpt::ESP::qmCharge 0
         set ::ForceFieldToolKit::ChargeOpt::ESP::qmMult 1
-        set ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute "6-31G*"
+        set ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute "HF/6-31G*"
 
     }
 
@@ -1509,7 +1511,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         puts $outfile "psi4_options  = {"
         puts $outfile "\"mp2_type\" : \"df\","
         puts $outfile "\"freeze_core\" : True,"
-        puts $outfile "\"basis\" : \"6-31G*\","
+        puts $outfile "\"basis\" : \"\","
         puts $outfile "\"g_convergence\" : \"gau_tight\","
         puts $outfile "}"
         puts $outfile ""
@@ -1524,8 +1526,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
 
         puts $outfile "xyz_array = np.array(json_output\[\'final_molecule\']\[\'geometry\'])"
         puts $outfile "xyz = xyz_array.reshape(mol.natom(), 3)"
-        puts $outfile "xyz *= 0.529177"
-        puts $outfile "mol.set_geometry(psi4.core.Matrix.from_array(xyzs))"
+        puts $outfile "mol.set_geometry(psi4.core.Matrix.from_array(xyz))"
         puts $outfile "mol.print_out_in_angstrom()"
 
         puts $outfile ""
@@ -1710,9 +1711,11 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
     #===========================================================================================================
     proc ::ForceFieldToolKit::Psi4::resetDefaultsGenBonded {} {
         # resets the QM settings to the default values
-        set ::ForceFieldToolKit::GenBonded::qmProc 1
-        set ::ForceFieldToolKit::GenBonded::qmMem 1
-        set ::ForceFieldToolKit::GenBonded::qmRoute "MP2"
+        set ::ForceFieldToolKit::Configuration::qmProc 1
+        set ::ForceFieldToolKit::Configuration::qmMem 1
+        set ::ForceFieldToolKit::GenBonded::qmCharge 0
+        set ::ForceFieldToolKit::GenBonded::qmMult 1
+        set ::ForceFieldToolKit::GenBonded::qmRoute "mp2/6-31G*"
         set ::ForceFieldToolKit::GenBonded::geomCHK "== not needed =="
 
         # Reset name of output QM file.
@@ -1803,7 +1806,7 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
                 puts $outfile "for i in range(0, step):"
                 puts $outfile "    fixD = {\"ranged_dihedral\": \"($oneInds \" + str(dihedral) + \" \" + str(dihedral) + \")\"}"
                 puts $outfile "    options = {"
-                puts $outfile {        'basis': '6-31g*',}
+                puts $outfile {        'basis': '',}
                 puts $outfile {        'mp2_type': 'df',}
                 puts $outfile {        'geom_maxiter': 100,}
                 puts $outfile {        'dynamic_level': 0,}
@@ -2005,9 +2008,9 @@ proc ::ForceFieldToolKit::Psi4::loadCOMFile { comfile } {
         # reset QM settings for generation of dihedral scan to the default values
         #
         # set variables
-        set ::ForceFieldToolKit::GenDihScan::qmProc 1
+        set ::ForceFieldToolKit::Configuration::qmProc 1
         set ::ForceFieldToolKit::GenDihScan::qmCharge 0
-        set ::ForceFieldToolKit::GenDihScan::qmMem 1
+        set ::ForceFieldToolKit::Configuration::qmMem 1
         set ::ForceFieldToolKit::GenDihScan::qmMult 1
         set ::ForceFieldToolKit::GenDihScan::qmRoute {mp2/6-31g*}
 

@@ -1,5 +1,5 @@
 #
-# $Id: fftk_guiInterface.tcl,v 1.50 2020/09/25 21:52:58 gumbart Exp $
+# $Id: fftk_guiInterface.tcl,v 1.51 2024/01/11 23:29:55 gumbart Exp $
 #
 
 #======================================================
@@ -1319,9 +1319,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::menubutton $gopt.gaussian.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::label $gopt.gaussian.procLbl -text "Processors:" -anchor w
-    ttk::entry $gopt.gaussian.proc -textvariable ::ForceFieldToolKit::GeomOpt::qmProc -width 2 -justify center
+    ttk::entry $gopt.gaussian.proc -textvariable ::ForceFieldToolKit::Configuration::qmProc -width 2 -justify center
     ttk::label $gopt.gaussian.memLbl -text "Memory(GB):" -anchor w
-    ttk::entry $gopt.gaussian.mem -textvariable ::ForceFieldToolKit::GeomOpt::qmMem -width 2 -justify center
+    ttk::entry $gopt.gaussian.mem -textvariable ::ForceFieldToolKit::Configuration::qmMem -width 2 -justify center
     ttk::label $gopt.gaussian.chargeLbl -text "Charge:" -anchor w
     ttk::entry $gopt.gaussian.charge -textvariable ::ForceFieldToolKit::GeomOpt::qmCharge -width 2 -justify center
     ttk::label $gopt.gaussian.multLbl -text "Multiplicity:" -anchor w
@@ -1626,11 +1626,11 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     ttk::menubutton $gzm.qm.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::label $gzm.qm.procLbl   -text "Processors:" -anchor w
-    ttk::entry $gzm.qm.proc      -textvariable ::ForceFieldToolKit::GenZMatrix::qmProc -width 2 -justify center
+    ttk::entry $gzm.qm.proc      -textvariable ::ForceFieldToolKit::Configuration::qmProc -width 2 -justify center
+    ttk::label $gzm.qm.memLbl    -text "Memory (GB):" -anchor w
+    ttk::entry $gzm.qm.mem       -textvariable ::ForceFieldToolKit::Configuration::qmMem -width 2 -justify center
     ttk::label $gzm.qm.chargeLbl -text "Charge:" -anchor w
     ttk::entry $gzm.qm.charge    -textvariable ::ForceFieldToolKit::GenZMatrix::qmCharge -width 2 -justify center
-    ttk::label $gzm.qm.memLbl    -text "Memory (GB):" -anchor w
-    ttk::entry $gzm.qm.mem       -textvariable ::ForceFieldToolKit::GenZMatrix::qmMem -width 2 -justify center
     ttk::label $gzm.qm.multLbl   -text "Multiplicity:" -anchor w
     ttk::entry $gzm.qm.mult      -textvariable ::ForceFieldToolKit::GenZMatrix::qmMult -width 2 -justify center
     ttk::button $gzm.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenZMatrix }
@@ -2729,9 +2729,9 @@ proc ::ForceFieldToolKit::gui::fftk_gui {} {
     # build QM settings
     ttk::labelframe $cesp.qm -labelanchor nw -padding $labelFrameInternalPadding -text "QM Settings"
     ttk::label      $cesp.qm.procLbl -text "Processors:" -anchor w
-    ttk::entry      $cesp.qm.proc -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qmProc -width 2 -justify center
+    ttk::entry      $cesp.qm.proc -textvariable ::ForceFieldToolKit::Configuration::qmProc -width 2 -justify center
     ttk::label      $cesp.qm.memLbl -text "Memory(GB):" -anchor w
-    ttk::entry      $cesp.qm.mem -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qmMem -width 2 -justify center
+    ttk::entry      $cesp.qm.mem -textvariable ::ForceFieldToolKit::Configuration::qmMem -width 2 -justify center
     ttk::label      $cesp.qm.chargeLbl -text "Charge:" -anchor w
     ttk::entry      $cesp.qm.charge -textvariable ::ForceFieldToolKit::ChargeOpt::ESP::qmCharge -width 2 -justify center
     ttk::label      $cesp.qm.multLbl -text "Multiplicity:" -anchor w
@@ -3365,9 +3365,13 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::frame $genbonded.hess.gaussian
     ttk::label $genbonded.hess.gaussian.lbl -text "QM Settings:"
     ttk::label $genbonded.hess.gaussian.qmProcLbl -text "Processors:" -anchor w
-    ttk::entry $genbonded.hess.gaussian.qmProc -textvariable ::ForceFieldToolKit::GenBonded::qmProc -width 2 -justify center
+    ttk::entry $genbonded.hess.gaussian.qmProc -textvariable ::ForceFieldToolKit::Configuration::qmProc -width 2 -justify center
     ttk::label $genbonded.hess.gaussian.qmMemLbl -text "Memory (GB):" -anchor w
-    ttk::entry $genbonded.hess.gaussian.qmMem -textvariable ::ForceFieldToolKit::GenBonded::qmMem -width 2 -justify center
+    ttk::entry $genbonded.hess.gaussian.qmMem -textvariable ::ForceFieldToolKit::Configuration::qmMem -width 2 -justify center
+    ttk::label $genbonded.hess.gaussian.chargeLbl -text "Charge:" -anchor w
+    ttk::entry $genbonded.hess.gaussian.charge    -textvariable ::ForceFieldToolKit::GenBonded::qmCharge -width 2 -justify center
+    ttk::label $genbonded.hess.gaussian.multLbl   -text "Multiplicity:" -anchor w
+    ttk::entry $genbonded.hess.gaussian.mult      -textvariable ::ForceFieldToolKit::GenBonded::qmMult -width 2 -justify center
     ttk::label $genbonded.hess.gaussian.qmRouteLbl -text "Route:" -anchor center
     ttk::entry $genbonded.hess.gaussian.qmRoute -textvariable ::ForceFieldToolKit::GenBonded::qmRoute
 
@@ -3411,16 +3415,20 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     grid $genbonded.hess.sep1 -column 0 -row 5 -columnspan 3 -sticky nswe -padx $hsepPadX -pady $hsepPadY
 
     grid $genbonded.hess.gaussian -column 0 -row 6 -columnspan 3 -sticky nswe
-    grid columnconfigure $genbonded.hess.gaussian 5 -weight 1
+    grid columnconfigure $genbonded.hess.gaussian 9 -weight 1
 
-    grid $genbonded.hess.gaussian.lbl -column 0 -row 0 -columnspan 5 -sticky nswe
-    grid $genbonded.hess.gaussian.qmProcLbl -column 0 -row 1 -sticky nswe
-    grid $genbonded.hess.gaussian.qmProc -column 1 -row 1 -sticky we
-    grid $genbonded.hess.gaussian.qmMemLbl -column 2 -row 1 -sticky nswe
-    grid $genbonded.hess.gaussian.qmMem -column 3 -row 1 -sticky we
-    grid $genbonded.hess.gaussian.reset2defaults -column 4 -row 1 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
+    grid $genbonded.hess.gaussian.lbl -column 0 -row 0 -columnspan 9 -sticky nswe
+    grid $genbonded.hess.gaussian.qmProcLbl      -column 0 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.qmProc         -column 1 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.qmMemLbl       -column 2 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.qmMem          -column 3 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.chargeLbl      -column 4 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.charge         -column 5 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.multLbl        -column 6 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.mult           -column 7 -row 1 -sticky w
+    grid $genbonded.hess.gaussian.reset2defaults -column 8 -row 1 -sticky nswe -padx $hbuttonPadX -pady $hbuttonPadY
     grid $genbonded.hess.gaussian.qmRouteLbl -column 0 -row 2 -sticky nswe
-    grid $genbonded.hess.gaussian.qmRoute -column 1 -row 2 -columnspan 6 -sticky nswe
+    grid $genbonded.hess.gaussian.qmRoute -column 1 -row 2 -columnspan 9 -sticky nswe
 
     grid $genbonded.hess.sep2 -column 0 -row 7 -columnspan 3 -sticky nswe -padx $hsepPadX -pady $hsepPadY
     grid $genbonded.hess.writeHessCom -column 0 -row 8 -columnspan 3 -sticky nswe -padx $buttonRunPadX -pady $buttonRunPadY
@@ -4394,11 +4402,11 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::menubutton $gds.qm.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::label $gds.qm.procLbl -text "Processors:" -anchor w
-    ttk::entry $gds.qm.proc -textvariable ::ForceFieldToolKit::GenDihScan::qmProc -width 2 -justify center
+    ttk::entry $gds.qm.proc -textvariable ::ForceFieldToolKit::Configuration::qmProc -width 2 -justify center
+    ttk::label $gds.qm.memLbl -text "Memory (GB):" -anchor w
+    ttk::entry $gds.qm.mem -textvariable ::ForceFieldToolKit::Configuration::qmMem -width 2 -justify center
     ttk::label $gds.qm.chargeLbl -text "Charge:" -anchor w
     ttk::entry $gds.qm.charge -textvariable ::ForceFieldToolKit::GenDihScan::qmCharge -width 2 -justify center
-    ttk::label $gds.qm.memLbl -text "Memory (GB):" -anchor w
-    ttk::entry $gds.qm.mem -textvariable ::ForceFieldToolKit::GenDihScan::qmMem -width 2 -justify center
     ttk::label $gds.qm.multLbl -text "Multiplicity:" -anchor w
     ttk::entry $gds.qm.mult -textvariable ::ForceFieldToolKit::GenDihScan::qmMult -width 2 -justify center
     ttk::button $gds.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenDihScan }
@@ -4754,11 +4762,11 @@ set ::ForceFieldToolKit::ChargeOpt::ESP::respPath "/Projects/kinlam2/anaconda3/b
     ttk::menubutton $ims.qm.selector -direction below -menu $w.menuQMSelector -textvariable ::ForceFieldToolKit::qmSoft -width 15
 
     ttk::label $ims.qm.procLbl -text "Processors:" -anchor w
-    ttk::entry $ims.qm.proc -textvariable ::ForceFieldToolKit::GenDihScan::qmProc -width 2 -justify center
+    ttk::entry $ims.qm.proc -textvariable ::ForceFieldToolKit::Configuration::qmProc -width 2 -justify center
+    ttk::label $ims.qm.memLbl -text "Memory (GB):" -anchor w
+    ttk::entry $ims.qm.mem -textvariable ::ForceFieldToolKit::Configuration::qmMem -width 2 -justify center
     ttk::label $ims.qm.chargeLbl -text "Charge:" -anchor w
     ttk::entry $ims.qm.charge -textvariable ::ForceFieldToolKit::GenDihScan::qmCharge -width 2 -justify center
-    ttk::label $ims.qm.memLbl -text "Memory (GB):" -anchor w
-    ttk::entry $ims.qm.mem -textvariable ::ForceFieldToolKit::GenDihScan::qmMem -width 2 -justify center
     ttk::label $ims.qm.multLbl -text "Multiplicity:" -anchor w
     ttk::entry $ims.qm.mult -textvariable ::ForceFieldToolKit::GenDihScan::qmMult -width 2 -justify center
     ttk::button $ims.qm.defaults -text "Reset to Defaults" -command { ::ForceFieldToolKit::${::ForceFieldToolKit::qmSoft}::resetDefaultsGenDihScan }

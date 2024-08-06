@@ -13,8 +13,8 @@ proc ::ForceFieldToolKit::Gaussian::resetDefaultsGeomOpt {} {
     # resets the gaussian settings to default
 
     # reset to default
-    set ::ForceFieldToolKit::GeomOpt::qmProc 1
-    set ::ForceFieldToolKit::GeomOpt::qmMem 1
+    set ::ForceFieldToolKit::Configuration::qmProc 1
+    set ::ForceFieldToolKit::Configuration::qmMem 1
     set ::ForceFieldToolKit::GeomOpt::qmCharge 0
     set ::ForceFieldToolKit::GeomOpt::qmMult 1
     set ::ForceFieldToolKit::GeomOpt::qmRoute "\# MP2/6-31G* Opt=(Redundant) SCF=Tight Geom=PrintInputOrient"
@@ -899,8 +899,8 @@ proc ::ForceFieldToolKit::Gaussian::resetDefaultsGenZMatrix {} {
     # resets gaussian settings to default for water interaction tab
 
     # reset
-    set ::ForceFieldToolKit::GenZMatrix::qmProc 1
-    set ::ForceFieldToolKit::GenZMatrix::qmMem 1
+    set ::ForceFieldToolKit::Configuration::qmProc 1
+    set ::ForceFieldToolKit::Configuration::qmMem 1
     set ::ForceFieldToolKit::GenZMatrix::qmCharge 0
     set ::ForceFieldToolKit::GenZMatrix::qmMult 1
     set ::ForceFieldToolKit::GenZMatrix::qmRoute "# HF/6-31G* Opt=(Z-matrix,MaxCycles=100) Geom=PrintInputOrient"
@@ -1075,8 +1075,8 @@ proc ::ForceFieldToolKit::Gaussian::writeDatFile_ESP { inputName gauLog } {
 proc ::ForceFieldToolKit::Gaussian::resetDefaultsESP {} {
 
     # resets the Gaussian Settings to default values
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmProc 1
-    set ::ForceFieldToolKit::ChargeOpt::ESP::qmMem 1
+    set ::ForceFieldToolKit::Configuration::qmProc 1
+    set ::ForceFieldToolKit::Configuration::qmMem 1
     set ::ForceFieldToolKit::ChargeOpt::ESP::qmCharge 0
     set ::ForceFieldToolKit::ChargeOpt::ESP::qmMult 1
     set ::ForceFieldToolKit::ChargeOpt::ESP::qmRoute "#P HF/6-31G* SCF=Tight Geom=Checkpoint Pop=MK IOp(6/33=2,6/41=10,6/42=17)"
@@ -1201,8 +1201,10 @@ proc ::ForceFieldToolKit::Gaussian::get_inthessian_kcal_BondAngleOpt { {hessLogI
 #===========================================================================================================
 proc ::ForceFieldToolKit::Gaussian::resetDefaultsGenBonded {} {
     # resets the QM settings to the default values
-    set ::ForceFieldToolKit::GenBonded::qmProc 1
-    set ::ForceFieldToolKit::GenBonded::qmMem 1
+    set ::ForceFieldToolKit::Configuration::qmProc 1
+    set ::ForceFieldToolKit::Configuration::qmMem 1
+    set ::ForceFieldToolKit::GenBonded::qmCharge 0
+    set ::ForceFieldToolKit::GenBonded::qmMult 1
     set ::ForceFieldToolKit::GenBonded::qmRoute "\# MP2/6-31G* Geom=(AllCheck,ModRedundant) Freq NoSymm IOp(7/33=1) SCF=Tight Guess=Read"
     set ::ForceFieldToolKit::GenBonded::geomCHK ""
 
@@ -1468,9 +1470,9 @@ proc ::ForceFieldToolKit::Gaussian::resetDefaultsGenDihScan {} {
     # reset QM settings for generation of dihedral scan to the default values
     #
     # set variables
-    set ::ForceFieldToolKit::GenDihScan::qmProc 1
+    set ::ForceFieldToolKit::Configuration::qmProc 1
     set ::ForceFieldToolKit::GenDihScan::qmCharge 0
-    set ::ForceFieldToolKit::GenDihScan::qmMem 1
+    set ::ForceFieldToolKit::Configuration::qmMem 1
     set ::ForceFieldToolKit::GenDihScan::qmMult 1
     set ::ForceFieldToolKit::GenDihScan::qmRoute "\# opt=modredundant MP2/6-31g(d) Geom=PrintInputOrient"
 

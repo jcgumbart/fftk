@@ -1,5 +1,5 @@
 #
-# $Id: fftk_Configuration.tcl,v 1.3 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_Configuration.tcl,v 1.4 2024/01/11 23:29:55 gumbart Exp $
 #
 #==============================================================================
 # Configurations -- variables and proc for setting and querying ffTK properties
@@ -10,6 +10,8 @@ namespace eval ::ForceFieldToolKit::Configuration {
 	# General Settings / Defaults
 	variable namdBin
 	variable tmpDir
+    variable qmProc
+    variable qmMem
 
 	# Multi-use files
 	variable geomOptPDB
@@ -24,6 +26,8 @@ proc ::ForceFieldToolKit::Configuration::init {} {
 	# General Settings
 	variable namdBin "namd2"
 	variable tmpDir [file normalize .]
+    variable qmProc 1
+    variable qmMem  1
 
 	# Multi-use files
 	variable geomOptPDB ""

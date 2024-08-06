@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenDihScan.tcl,v 1.15 2020/09/01 16:55:13 johns Exp $
+# $Id: fftk_GenDihScan.tcl,v 1.16 2024/01/11 23:29:55 gumbart Exp $
 #
 
 #======================================================
@@ -8,9 +8,9 @@ namespace eval ::ForceFieldToolKit::GenDihScan {
     #variable pdb ; # replaced by general configuration geomOptPDB
     variable outPath
     variable basename
-    variable qmProc
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
     variable qmCharge
-    variable qmMem
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmMult
     variable qmRoute
     variable dihData
@@ -24,9 +24,9 @@ proc ::ForceFieldToolKit::GenDihScan::init {} {
     #variable pdb
     variable outPath
     variable basename
-    variable qmProc
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
     variable qmCharge
-    variable qmMem
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmMult
     variable qmRoute
     variable dihData
@@ -55,9 +55,9 @@ proc ::ForceFieldToolKit::GenDihScan::sanityCheck {} {
     set pdb $::ForceFieldToolKit::Configuration::geomOptPDB
     variable outPath
     variable basename
-    variable qmProc
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
     variable qmCharge
-    variable qmMem
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmMult
     variable qmRoute
     variable dihData
@@ -155,9 +155,9 @@ proc ::ForceFieldToolKit::GenDihScan::buildGaussianFiles {} {
     set pdb $::ForceFieldToolKit::Configuration::geomOptPDB
     variable outPath
     variable basename
-    variable qmProc
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
     variable qmCharge
-    variable qmMem
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmMult
     variable qmRoute
     variable dihData

@@ -1,13 +1,13 @@
 #
-# $Id: fftk_ChargeOpt_ESP.tcl,v 1.2 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_ChargeOpt_ESP.tcl,v 1.3 2024/01/11 23:29:55 gumbart Exp $
 #
 #==============================================================================
 namespace eval ::ForceFieldToolKit::ChargeOpt::ESP:: {
     variable chk
     variable gau
 	variable gauLog
-	variable qmProc 1
-	variable qmMem 1
+	set qmProc $::ForceFieldToolKit::Configuration::qmProc
+	set qmMem $::ForceFieldToolKit::Configuration::qmMem
 	variable qmCharge 0
 	variable qmMult 1
 	variable qmRoute "#P HF/6-31G* SCF=Tight Geom=Checkpoint Pop=MK IOp(6/33=2,6/41=10,6/42=17)"   
@@ -35,8 +35,8 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::init {} {
     variable chk
     variable gau
 
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmRoute
@@ -67,8 +67,8 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::sanityCheck {} {
     variable chk
     variable gau
 
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmCharge
     variable qmMult
     variable qmRoute
@@ -182,8 +182,8 @@ proc ::ForceFieldToolKit::ChargeOpt::ESP::writeGauFile {} {
 	# writes a QM input file
 
        variable chk
-       variable qmProc
-       variable qmMem
+       set qmProc $::ForceFieldToolKit::Configuration::qmProc
+       set qmMem $::ForceFieldToolKit::Configuration::qmMem
        variable qmCharge
        variable qmMult
        variable qmRoute

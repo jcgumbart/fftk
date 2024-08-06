@@ -1,5 +1,5 @@
 #
-# $Id: fftk_SharedFcns.tcl,v 1.18 2020/09/01 16:55:14 johns Exp $
+# $Id: fftk_SharedFcns.tcl,v 1.20 2024/01/11 23:29:55 gumbart Exp $
 #
 
 namespace eval ::ForceFieldToolKit::SharedFcns {

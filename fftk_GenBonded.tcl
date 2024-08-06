@@ -1,5 +1,5 @@
 #
-# $Id: fftk_GenBonded.tcl,v 1.20 2019/08/27 22:31:22 johns Exp $
+# $Id: fftk_GenBonded.tcl,v 1.21 2024/01/11 23:29:55 gumbart Exp $
 #
 
 #======================================================
@@ -8,9 +8,11 @@ namespace eval ::ForceFieldToolKit::GenBonded:: {
     # declare variables for generating gaussian input file
     variable geomCHK
     variable com
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
+    variable qmCharge
+    variable qmMult
     variable qmSoft $::ForceFieldToolKit::qmSoft
     
     # declare variables for extracting PARs from QM log
@@ -52,8 +54,8 @@ proc ::ForceFieldToolKit::GenBonded::sanityCheck { procType } {
     # localize GenBonded variables
     variable geomCHK
     variable com
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
     
     #variable psf
@@ -181,11 +183,11 @@ proc ::ForceFieldToolKit::GenBonded::writeComFile {} {
     # localize necessary variables
     variable geomCHK
     variable com
-    variable qmProc
-    variable qmMem
+    set qmProc $::ForceFieldToolKit::Configuration::qmProc
+    set qmMem $::ForceFieldToolKit::Configuration::qmMem
     variable qmRoute
-    variable qmCharge $::ForceFieldToolKit::GeomOpt::qmCharge
-    variable qmMult $::ForceFieldToolKit::GeomOpt::qmMult
+    variable qmCharge
+    variable qmMult
     #variable psf
     set psf $::ForceFieldToolKit::Configuration::chargeOptPSF
     #variable pdb

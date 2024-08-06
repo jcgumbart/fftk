@@ -1,5 +1,5 @@
 #
-# $Id: fftk_BuildPar.tcl,v 1.20 2020/09/01 16:55:13 johns Exp $
+# $Id: fftk_BuildPar.tcl,v 1.21 2024/01/11 23:29:55 gumbart Exp $
 #
 
 #======================================================
@@ -369,6 +369,7 @@ proc ::ForceFieldToolKit::BuildPar::buildUpdatedParFile {} {
     set optBonds {}
     set optAngles {}
     set optDihedrals {}
+    set optImpropers {}
 
     # run a sanity check
     if { ![::ForceFieldToolKit::BuildPar::sanityCheck updateOptPars ] } { return }
@@ -395,6 +396,7 @@ proc ::ForceFieldToolKit::BuildPar::buildUpdatedParFile {} {
                         "bond" { lappend optBonds [list [lindex $inLine 1] [list [lindex $inLine 2] [lindex $inLine 3]] {}] }
                         "angle" { lappend optAngles [list [lindex $inLine 1] [list [lindex $inLine 2] [lindex $inLine 3]] {} {}] }
                         "dihedral" { lappend optDihedrals [list [lindex $inLine 1] [list [lindex $inLine 2] [lindex $inLine 3] [lindex $inLine 4]] {}] }
+                        "improper" { lappend optImpropers [list [lindex $inLine 1] [list [lindex $inLine 2] [lindex $inLine 3] [lindex $inLine 4]] {}] }
                         default { continue }
                     }
                 } else {
@@ -507,6 +509,25 @@ proc ::ForceFieldToolKit::BuildPar::buildUpdatedParFile {} {
     # replace the input dihedral parameters with the updated parameters
     lset parData 2 $dihParUpdate    
 
+    # update impropers
+    # build a list of improper definitions from the input par data
+    set oldImprDefs {}
+    foreach imprEntry [lindex $parData 3] {
+        lappend oldImprDefs [lindex $imprEntry 0]
+    }
+    # cycle through each improper with parameters to update
+    foreach impr2update $optImpropers {
+        # search against the input parameter data
+        set testfwd [lsearch $oldImprDefs [lindex $impr2update 0]]
+        set testrev [lsearch $oldImprDefs [lreverse [lindex $impr2update 0]]]
+        if { $testfwd == -1 && $testrev == -1 } {
+            puts "ERROR: Improper definition to update: [lindex $impr2update 0] was not found in input parameter set"
+        } elseif { $testfwd > -1 } {
+            lset parData 3 $testfwd 1 [lindex $impr2update 1]
+        } elseif { $testrev > -1 } {
+            lset parData 3 $testrev 1 [lindex $impr2update 1]
+        }
+    }
 
     
     # write the updated parameter file

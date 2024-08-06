@@ -1,5 +1,5 @@
 #
-# $Id: fftk_ChargeOpt.tcl,v 1.28 2020/09/01 16:55:13 johns Exp $
+# $Id: fftk_ChargeOpt.tcl,v 1.29 2024/06/05 16:18:31 gumbart Exp $
 #
 
 #======================================================
@@ -692,6 +692,16 @@ proc ::ForceFieldToolKit::ChargeOpt::optimize {} {
 
     # generate lone pair position on dipoleQMcoords
     set dipoleQMcoords [::ForceFieldToolKit::SharedFcns::LonePair::addLPCoordinate $dipoleQMcoords]
+
+    # center dipoleQMcoords on origin just in case
+    set center {0.0 0.0 0.0} 
+    foreach ele $dipoleQMcoords {
+       set center [vecadd $center $ele]
+    }
+    set center [vecscale [expr 1.0/[llength $dipoleQMcoords]] $center]
+    for {set i 0} {$i < [llength $dipoleQMcoords]} {incr i} {
+       set dipoleQMcoords [lreplace $dipoleQMcoords $i $i [vecsub [lindex $dipoleQMcoords $i] $center]]
+    }
 
     if { $debug } {
         puts $debugLog "QM Standard Orientation Coordinates:"
